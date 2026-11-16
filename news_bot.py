@@ -24,53 +24,85 @@ STATE_FILE = BASE_DIR / "seen_news.json"
 CHECK_INTERVAL = 120
 
 FEEDS = {
+    # آمریکا
     "Federal Reserve": "https://www.federalreserve.gov/feeds/press_all.xml",
     "BLS": "https://www.bls.gov/feed/bls_latest.rss",
     "BEA": "https://apps.bea.gov/rss/rss.xml",
-    "Gold Market News": "https://news.google.com/rss/search?q=gold+OR+bullion+OR+precious+metals+when:1d&hl=en-US&gl=US&ceid=US:en",
-    "US Economic Reports": "https://news.google.com/rss/search?q=US+CPI+OR+PCE+OR+GDP+OR+payrolls+OR+inflation+OR+FOMC+OR+interest+rates+OR+unemployment+when:1d&hl=en-US&gl=US&ceid=US:en",
+
+    # اروپا و بریتانیا
+    "European Central Bank": "https://www.ecb.europa.eu/rss/press.html",
+    "Eurostat": "https://ec.europa.eu/eurostat/cache/RSS/rss_estat_news.xml",
+    "Bank of England": "https://www.bankofengland.co.uk/rss/news",
+
+    # ژاپن
+    "Bank of Japan": "https://www.boj.or.jp/en/rss/whatsnew.xml",
+
+    # اخبار اقتصاد و بازار جهانی
+    "Gold Market": "https://news.google.com/rss/search?q=gold+OR+bullion+OR+precious+metals&hl=en-US&gl=US&ceid=US:en",
+
+    "Forex and Central Banks": "https://news.google.com/rss/search?q=Federal+Reserve+OR+ECB+OR+Bank+of+England+OR+Bank+of+Japan+OR+forex+OR+currency&hl=en-US&gl=US&ceid=US:en",
+
+    "Economic Reports": "https://news.google.com/rss/search?q=CPI+OR+PCE+OR+GDP+OR+NFP+OR+inflation+OR+interest+rates+OR+unemployment+OR+PMI&hl=en-US&gl=US&ceid=US:en",
+
+    "Geopolitical News": "https://news.google.com/rss/search?q=war+OR+sanctions+OR+Iran+OR+Israel+OR+Ukraine+OR+China+OR+trade+war+OR+tariffs&hl=en-US&gl=US&ceid=US:en",
+
+    "Oil and Energy": "https://news.google.com/rss/search?q=crude+oil+OR+OPEC+OR+oil+prices+OR+natural+gas+OR+energy+markets&hl=en-US&gl=US&ceid=US:en",
+
+    "China and Global Markets": "https://news.google.com/rss/search?q=China+economy+OR+Asian+markets+OR+Wall+Street+OR+stock+markets+OR+global+economy&hl=en-US&gl=US&ceid=US:en",
 }
 
 KEYWORDS = [
-    "cpi",
-    "core cpi",
-    "inflation",
-    "consumer price",
-    "pce",
-    "core pce",
-    "nonfarm payroll",
-    "employment situation",
-    "unemployment",
-    "job openings",
-    "labor market",
-    "fomc",
-    "federal funds",
-    "interest rate",
-    "monetary policy",
-    "federal reserve",
-    "powell",
-    "gross domestic product",
-    "gdp",
-    "personal income",
-    "consumer spending",
-    "retail sales",
-    "producer price",
-    "ppi",
-    "treasury yields",
-    "bond yields",
-    "us dollar",
-    "dollar index",
-    "dxy",
-    "gold",
-    "bullion",
-    "precious metals",
-    "gold price",
-    "gold market",
-    "gold demand",
-    "central bank gold",
-    "gold reserves",
-    "central bank purchases",
-    "world gold council"
+    # طلا و فلزات گران‌بها
+    "gold", "bullion", "precious metals",
+    "gold price", "gold market", "gold demand",
+    "gold reserves", "central bank gold",
+
+    # تورم و اقتصاد آمریکا
+    "cpi", "core cpi", "pce", "core pce",
+    "inflation", "ppi", "gdp", "nfp",
+    "nonfarm payroll", "unemployment",
+    "employment", "retail sales", "consumer spending",
+    "consumer confidence", "pmi", "ism",
+
+    # بانک‌های مرکزی و نرخ بهره
+    "federal reserve", "fed", "powell",
+    "fomc", "ecb", "european central bank",
+    "bank of england", "boe",
+    "bank of japan", "boj",
+    "interest rate", "rate decision",
+    "monetary policy", "quantitative easing",
+
+    # ارزها
+    "us dollar", "dollar index", "dxy",
+    "euro", "eurusd", "sterling", "british pound",
+    "gbpusd", "japanese yen", "usdjpy",
+    "forex", "foreign exchange", "currency",
+    "exchange rate",
+
+    # اوراق قرضه و بازارها
+    "treasury yields", "bond yields",
+    "government bonds", "stock market",
+    "wall street", "equity markets",
+    "market selloff", "market rally",
+
+    # نفت و انرژی
+    "crude oil", "brent", "wti",
+    "opec", "natural gas", "energy prices",
+
+    # چین و اقتصاد جهانی
+    "china economy", "chinese economy",
+    "pboc", "people's bank of china",
+    "trade war", "global economy",
+    "economic crisis", "banking crisis",
+
+    # اخبار سیاسی و ژئوپلیتیکی
+    "war", "military strike", "missile",
+    "airstrike", "ceasefire", "invasion",
+    "sanctions", "geopolitical",
+    "iran", "israel", "middle east",
+    "ukraine", "russia", "nuclear",
+    "tariffs", "trade restrictions",
+    "peace talks", "political crisis"
 ]
 
 API_URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -181,44 +213,38 @@ def main():
     seen = load_seen()
     initialized = STATE_FILE.exists()
 
-    print("Gold News Bot شروع شد.")
-    print("بررسی منابع هر ۲ دقیقه انجام می‌شود.")
+    print("Gold News Bot started.")
 
-    while True:
+    for source, url in FEEDS.items():
         try:
-            for source, url in FEEDS.items():
-                try:
-                    entries = get_entries(url)
+            entries = get_entries(url)
 
-                    for entry in reversed(entries):
-                        uid = source + ":" + entry_id(entry)
+            for entry in reversed(entries):
+                uid = source + ":" + entry_id(entry)
 
-                        if not uid.strip() or uid in seen:
-                            continue
+                if not uid.strip() or uid in seen:
+                    continue
 
-                        title = entry.get("title", "")
-                        summary = entry.get("summary", "")
+                title = entry.get("title", "")
+                summary = entry.get("summary", "")
 
-                        if initialized and is_relevant(title, summary):
-                            message = make_message(source, entry)
-                            send_telegram(message)
-                            print("خبر ارسال شد:", title)
+                if initialized and is_relevant(title, summary):
+                    message = make_message(source, entry)
+                    send_telegram(message)
+                    print("News sent:", title)
 
-                        seen.add(uid)
-                        save_seen(seen)
-
-                except Exception as error:
-                    print(f"خطا در منبع {source}: {error}")
-
-            if not initialized:
-                initialized = True
+                seen.add(uid)
                 save_seen(seen)
-                print("آماده شد؛ خبرهای بعدی ارسال خواهند شد.")
 
         except Exception as error:
-            print("خطای عمومی:", error)
+            print(f"Error in {source}: {error}")
 
-        time.sleep(CHECK_INTERVAL)
+    if not initialized:
+        save_seen(seen)
+        print("Initial news history saved.")
+
+    print("News check completed.")
+
 
 if __name__ == "__main__":
     main()
