@@ -301,6 +301,11 @@ def translate_to_persian(text):
 
 
 def send_telegram(message):
+    if os.getenv("DRY_RUN", "false").lower() == "true":
+        print("[DRY RUN] Telegram message was not sent:")
+        print(message[:1000])
+        return False
+
     for attempt in range(3):
         response = requests.post(
             API_URL,
@@ -334,7 +339,7 @@ def send_telegram(message):
         if not result.get("ok"):
             raise RuntimeError(str(result))
 
-        return
+        return True
 
     raise TelegramRateLimitError("Telegram rate limit; message not sent.")
 
@@ -456,7 +461,9 @@ def main():
                 message = make_message(source, entry)
 
                 try:
-                    send_telegram(message)
+                    sent = send_telegram(message)
+                    if not sent:
+                        continue
                 except TelegramRateLimitError as error:
                     print("Stopping sends due to Telegram limit:", error)
                     stop_sending = True

@@ -12,6 +12,9 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 
 def send(text):
+    if os.getenv("DRY_RUN", "false").lower() == "true":
+        print("[DRY RUN] Daily digest preview (not sent):\n" + text)
+        return
     if not TOKEN or not CHANNEL_ID:
         raise SystemExit("Telegram settings missing")
     response = requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
