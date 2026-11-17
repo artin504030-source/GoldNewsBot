@@ -6,6 +6,8 @@ import time
 import requests
 import feedparser
 
+from gold_news_features import analyse_news, kabul_time, load_archive, is_duplicate, archive_news, source_status, record_source_confirmation
+
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
@@ -24,8 +26,17 @@ STATE_FILE = BASE_DIR / "seen_news.json"
 API_URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
 # حداکثر سه خبر در هر اجرای ۱۵ دقیقه‌ای
-MAX_NEWS_PER_RUN = 3
+MAX_NEWS_PER_RUN = 2 if os.getenv("BREAKING_ONLY", "false").lower() == "true" else 3
 MAX_AGE_HOURS = 36
+BREAKING_ONLY = os.getenv("BREAKING_ONLY", "false").lower() == "true"
+BREAKING_TERMS = (
+    "breaking", "just in", "emergency meeting", "emergency rate", "unexpected rate",
+    "surprise rate", "fed cuts rates", "fed raises rates", "rate cut announced",
+    "rate hike announced", "military strike", "airstrike", "missile attack", "invasion",
+    "major escalation", "ceasefire agreement", "bank collapse", "bank failure",
+    "bank defaults", "sovereign default", "financial panic", "emergency sanctions",
+    "explosion", "attack on", "central bank intervention"
+)
 TRANSLATION_DELAY = 1.0
 
 FEEDS = {
@@ -42,6 +53,11 @@ FEEDS = {
     "Geopolitical News": "https://news.google.com/rss/search?q=war+OR+sanctions+OR+Iran+OR+Israel+OR+Ukraine+OR+China+OR+trade+war+OR+tariffs&hl=en-US&gl=US&ceid=US:en",
     "Oil and Energy": "https://news.google.com/rss/search?q=crude+oil+OR+OPEC+OR+oil+prices+OR+natural+gas+OR+energy+markets&hl=en-US&gl=US&ceid=US:en",
     "China and Global Markets": "https://news.google.com/rss/search?q=China+economy+OR+Asian+markets+OR+Wall+Street+OR+stock+markets+OR+global+economy&hl=en-US&gl=US&ceid=US:en",
+}
+
+BREAKING_FEEDS = {
+    name: url for name, url in FEEDS.items()
+    if name in {"Federal Reserve", "BLS", "BEA", "European Central Bank", "Bank of England", "Bank of Japan", "Geopolitical News", "Economic Reports"}
 }
 
 # واژه‌هایی که معمولاً نشان‌دهنده خبر ورزشی، فروشگاهی یا نامرتبط‌اند
@@ -192,6 +208,11 @@ def is_recent(entry):
     return timedelta(minutes=-10) <= age <= timedelta(hours=MAX_AGE_HOURS)
 
 
+def is_breaking_news(title, summary=""):
+    text = clean_text(title + " " + summary).lower()
+    return any(term in text for term in BREAKING_TERMS)
+
+
 def is_relevant(title, summary):
     text = clean_text(title + " " + summary).lower()
 
@@ -299,6 +320,11 @@ def translate_to_persian(text):
 
 
 def send_telegram(message):
+    if os.getenv("DRY_RUN", "false").lower() == "true":
+        print("[DRY RUN] Telegram message was not sent:")
+        print(message[:1000])
+        return False
+
     for attempt in range(3):
         response = requests.post(
             API_URL,
@@ -332,7 +358,7 @@ def send_telegram(message):
         if not result.get("ok"):
             raise RuntimeError(str(result))
 
-        return
+        return True
 
     raise TelegramRateLimitError("Telegram rate limit; message not sent.")
 
@@ -342,6 +368,10 @@ def make_message(source, entry):
     raw_summary = clean_text(entry.get("summary", ""))
     link = entry.get("link", "")
     published = entry.get("published", "زمان نامشخص")
+    published_dt = entry_datetime(entry)
+    kabul_published = kabul_time(published_dt) if published_dt else "زمان نامشخص"
+    relevance = analyse_news(title, raw_summary)
+    breaking = is_breaking_news(title, raw_summary)
 
     # خلاصه تکراری عنوان را به‌عنوان خلاصه مستقل نمایش نمی‌دهیم.
     summary = raw_summary
@@ -368,12 +398,15 @@ def make_message(source, entry):
 
     return (
         "کانال خبری گلد نیوز | Gold News Channel\n"
-        "🟡 گزارش خبری\n\n"
+        f"{'🚨 خبر فوری\n' if breaking else '🟡 گزارش خبری\n'}\n"
         f"نماد خبر: {symbols}\n"
         f"📰 عنوان: {persian_title}\n"
         f"اهمیت خبر: {importance}\n"
-        f"🏛 منبع: {source}\n"
-        f"🕒 زمان انتشار: {published}\n\n"
+        f"ارتباط با طلا: {relevance['label']} ({relevance['score']}/100)\n"
+        f"دسته‌بندی: {relevance['category']}\n"
+        f"🏛 منبع: {source} ({source_status(source)})\n"
+        f"🕒 زمان انتشار منبع: {published}\n"
+        f"🕒 زمان کابل: {kabul_published}\n\n"
         "🇬🇧 ENGLISH SUMMARY:\n"
         f"{english_summary}\n\n"
         "🇮🇷 خلاصه فارسی:\n"
@@ -387,22 +420,26 @@ def main():
     seen = load_seen()
     initialized = STATE_FILE.exists()
     sent_count = 0
+    preview_count = 0
+    archive = load_archive()
     stop_sending = False
 
     print("Gold News Bot started.")
     print("Loaded seen items:", len(seen))
     print("Maximum news per run:", MAX_NEWS_PER_RUN)
     print("Maximum news age (hours):", MAX_AGE_HOURS)
+    print("Breaking-only mode:", BREAKING_ONLY)
+    feeds_to_check = BREAKING_FEEDS if BREAKING_ONLY else FEEDS
 
-    for source, url in FEEDS.items():
-        if stop_sending or sent_count >= MAX_NEWS_PER_RUN:
+    for source, url in feeds_to_check.items():
+        if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN:
             break
 
         try:
             entries = get_entries(url)
 
             for entry in reversed(entries):
-                if stop_sending or sent_count >= MAX_NEWS_PER_RUN:
+                if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN:
                     break
 
                 uid = source + ":" + entry_id(entry)
@@ -431,6 +468,19 @@ def main():
                     print("Filtered irrelevant news:", title)
                     continue
 
+                if BREAKING_ONLY and not is_breaking_news(title, summary):
+                    # این خبر را در اسکن فوری علامت‌گذاری نمی‌کنیم؛ اسکن عادی باید بتواند آن را بررسی کند.
+                    continue
+
+                if is_duplicate(title, entry.get("link", ""), archive):
+                    confirmations = record_source_confirmation(source, title, entry.get("link", ""))
+                    print(f"Duplicate confirmed by another source; total sources={confirmations}:", title)
+                    archive = load_archive()
+                    seen.add(uid)
+                    save_seen(seen)
+                    print("Skipped cross-feed duplicate:", title)
+                    continue
+
                 symbols = detect_symbols(title, summary)
                 importance = detect_importance(title, summary)
                 print(
@@ -441,7 +491,13 @@ def main():
                 message = make_message(source, entry)
 
                 try:
-                    send_telegram(message)
+                    sent = send_telegram(message)
+                    if not sent:
+                        preview_count += 1
+                        print("Dry-run candidate checked:", preview_count)
+                        if preview_count >= MAX_NEWS_PER_RUN:
+                            break
+                        continue
                 except TelegramRateLimitError as error:
                     print("Stopping sends due to Telegram limit:", error)
                     stop_sending = True
@@ -450,6 +506,9 @@ def main():
                 # فقط پس از تأیید موفق تلگرام خبر در سوابق ثبت می‌شود.
                 seen.add(uid)
                 save_seen(seen)
+                published_dt = entry_datetime(entry)
+                archive_news(source, title, summary, entry.get("link", ""), published_dt.isoformat() if published_dt else "", importance)
+                archive = load_archive()
                 sent_count += 1
                 print("News sent successfully:", title)
                 time.sleep(3)
@@ -462,6 +521,8 @@ def main():
         print("Initial news history saved. No old news was sent.")
 
     print("News sent in this run:", sent_count)
+    if preview_count:
+        print("Dry-run candidates previewed:", preview_count)
     print("Seen items saved:", len(seen))
     print("News check completed.")
 
