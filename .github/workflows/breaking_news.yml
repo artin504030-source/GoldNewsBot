@@ -57,3 +57,40 @@ jobs:
           else
             echo "No news history changes to save."
           fi
+      - name: Check dashboard sync token
+        id: dashboard-token
+        if: success() && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true)
+        env:
+          DASHBOARD_REPO_TOKEN: ${{ secrets.DASHBOARD_REPO_TOKEN }}
+        run: |
+          if [ -n "$DASHBOARD_REPO_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Dashboard sync skipped: add DASHBOARD_REPO_TOKEN to repository secrets."
+          fi
+
+      - name: Checkout public dashboard repository
+        if: steps.dashboard-token.outputs.enabled == 'true'
+        uses: actions/checkout@v5
+        with:
+          repository: artin504030-source/GoldNewsDashboard
+          ref: main
+          path: dashboard-site
+          token: ${{ secrets.DASHBOARD_REPO_TOKEN }}
+
+      - name: Publish latest news archive to dashboard
+        if: steps.dashboard-token.outputs.enabled == 'true'
+        run: |
+          cp news_archive.json dashboard-site/news_archive.json
+          cd dashboard-site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add news_archive.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync latest public news archive"
+            git push origin HEAD:main
+          else
+            echo "Public news archive is already up to date."
+          fi
+
