@@ -6,7 +6,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: gold-news-bot
+  cancel-in-progress: false
 
 jobs:
   run-bot:
@@ -15,19 +19,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          ref: main
 
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
-      - name: Restore news history
-        uses: actions/cache@v5
-        with:
-          path: seen_news.json
-          key: gold-news-state-${{ github.run_id }}
-          restore-keys: |
-            gold-news-state-
 
       - name: Install libraries
         run: pip install -r requirements.txt
@@ -37,3 +35,16 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
         run: python news_bot.py
+
+      - name: Save news history to repository
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add seen_news.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update processed news history"
+            git push origin HEAD:main
+          else
+            echo "No news history changes to save."
+          fi
