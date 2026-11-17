@@ -6,7 +6,7 @@ import time
 import requests
 import feedparser
 
-from gold_news_features import analyse_news, kabul_time, load_archive, is_duplicate, archive_news, source_status
+from gold_news_features import analyse_news, kabul_time, load_archive, is_duplicate, archive_news, source_status, record_source_confirmation
 
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -26,8 +26,17 @@ STATE_FILE = BASE_DIR / "seen_news.json"
 API_URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
 # حداکثر سه خبر در هر اجرای ۱۵ دقیقه‌ای
-MAX_NEWS_PER_RUN = 3
+MAX_NEWS_PER_RUN = 2 if os.getenv("BREAKING_ONLY", "false").lower() == "true" else 3
 MAX_AGE_HOURS = 36
+BREAKING_ONLY = os.getenv("BREAKING_ONLY", "false").lower() == "true"
+BREAKING_TERMS = (
+    "breaking", "just in", "emergency meeting", "emergency rate", "unexpected rate",
+    "surprise rate", "fed cuts rates", "fed raises rates", "rate cut announced",
+    "rate hike announced", "military strike", "airstrike", "missile attack", "invasion",
+    "major escalation", "ceasefire agreement", "bank collapse", "bank failure",
+    "bank defaults", "sovereign default", "financial panic", "emergency sanctions",
+    "explosion", "attack on", "central bank intervention"
+)
 TRANSLATION_DELAY = 1.0
 
 FEEDS = {
@@ -44,6 +53,11 @@ FEEDS = {
     "Geopolitical News": "https://news.google.com/rss/search?q=war+OR+sanctions+OR+Iran+OR+Israel+OR+Ukraine+OR+China+OR+trade+war+OR+tariffs&hl=en-US&gl=US&ceid=US:en",
     "Oil and Energy": "https://news.google.com/rss/search?q=crude+oil+OR+OPEC+OR+oil+prices+OR+natural+gas+OR+energy+markets&hl=en-US&gl=US&ceid=US:en",
     "China and Global Markets": "https://news.google.com/rss/search?q=China+economy+OR+Asian+markets+OR+Wall+Street+OR+stock+markets+OR+global+economy&hl=en-US&gl=US&ceid=US:en",
+}
+
+BREAKING_FEEDS = {
+    name: url for name, url in FEEDS.items()
+    if name in {"Federal Reserve", "BLS", "BEA", "European Central Bank", "Bank of England", "Bank of Japan", "Geopolitical News", "Economic Reports"}
 }
 
 # واژه‌هایی که معمولاً نشان‌دهنده خبر ورزشی، فروشگاهی یا نامرتبط‌اند
@@ -192,6 +206,11 @@ def is_recent(entry):
     now = datetime.now(timezone.utc)
     age = now - published
     return timedelta(minutes=-10) <= age <= timedelta(hours=MAX_AGE_HOURS)
+
+
+def is_breaking_news(title, summary=""):
+    text = clean_text(title + " " + summary).lower()
+    return any(term in text for term in BREAKING_TERMS)
 
 
 def is_relevant(title, summary):
@@ -352,6 +371,7 @@ def make_message(source, entry):
     published_dt = entry_datetime(entry)
     kabul_published = kabul_time(published_dt) if published_dt else "زمان نامشخص"
     relevance = analyse_news(title, raw_summary)
+    breaking = is_breaking_news(title, raw_summary)
 
     # خلاصه تکراری عنوان را به‌عنوان خلاصه مستقل نمایش نمی‌دهیم.
     summary = raw_summary
@@ -378,7 +398,7 @@ def make_message(source, entry):
 
     return (
         "کانال خبری گلد نیوز | Gold News Channel\n"
-        "🟡 گزارش خبری\n\n"
+        f"{'🚨 خبر فوری\n' if breaking else '🟡 گزارش خبری\n'}\n"
         f"نماد خبر: {symbols}\n"
         f"📰 عنوان: {persian_title}\n"
         f"اهمیت خبر: {importance}\n"
@@ -408,8 +428,10 @@ def main():
     print("Loaded seen items:", len(seen))
     print("Maximum news per run:", MAX_NEWS_PER_RUN)
     print("Maximum news age (hours):", MAX_AGE_HOURS)
+    print("Breaking-only mode:", BREAKING_ONLY)
+    feeds_to_check = BREAKING_FEEDS if BREAKING_ONLY else FEEDS
 
-    for source, url in FEEDS.items():
+    for source, url in feeds_to_check.items():
         if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN:
             break
 
@@ -446,7 +468,14 @@ def main():
                     print("Filtered irrelevant news:", title)
                     continue
 
+                if BREAKING_ONLY and not is_breaking_news(title, summary):
+                    # این خبر را در اسکن فوری علامت‌گذاری نمی‌کنیم؛ اسکن عادی باید بتواند آن را بررسی کند.
+                    continue
+
                 if is_duplicate(title, entry.get("link", ""), archive):
+                    confirmations = record_source_confirmation(source, title, entry.get("link", ""))
+                    print(f"Duplicate confirmed by another source; total sources={confirmations}:", title)
+                    archive = load_archive()
                     seen.add(uid)
                     save_seen(seen)
                     print("Skipped cross-feed duplicate:", title)

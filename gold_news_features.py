@@ -107,11 +107,40 @@ def source_status(source):
     return "منبع رسمی" if any(term in name for term in official) else "منبع رسانه‌ای/تجمیع‌گر؛ نیازمند بررسی منبع اصلی"
 
 
+def _matching_archive_item(title, link, items):
+    key = canonical_url(link)
+    normalized = re.sub(r"[^a-z0-9\u0600-\u06ff]+", " ", title.lower()).strip()
+    for item in reversed(items[-500:]):
+        old_link = canonical_url(item.get("link", ""))
+        if key and old_link and key == old_link:
+            return item
+        old_title = re.sub(r"[^a-z0-9\u0600-\u06ff]+", " ", item.get("title", "").lower()).strip()
+        if normalized and old_title and SequenceMatcher(None, normalized, old_title).ratio() >= 0.91:
+            return item
+    return None
+
+
+def record_source_confirmation(source, title, link):
+    items = load_archive()
+    match = _matching_archive_item(title, link, items)
+    if not match:
+        return 0
+    sources = match.get("confirmed_sources") or [match.get("source", "نامشخص")]
+    if source and source not in sources:
+        sources.append(source)
+    match["confirmed_sources"] = sources
+    match["source_count"] = len(sources)
+    match["confirmation_status"] = "تأیید چند منبع" if len(sources) >= 2 else "یک منبع ثبت‌شده"
+    match["last_confirmation_utc"] = datetime.now(timezone.utc).isoformat()
+    save_archive(items)
+    return len(sources)
+
+
 def archive_news(source, title, summary, link, published, importance):
     analysis = analyse_news(title, summary)
     items = load_archive()
     items.append({
-        "source": source, "source_status": source_status(source), "title": title, "summary": summary[:1200], "link": link,
+        "source": source, "source_status": source_status(source), "confirmed_sources": [source], "source_count": 1, "confirmation_status": "یک منبع ثبت‌شده", "title": title, "summary": summary[:1200], "link": link,
         "published_utc": published, "published_kabul": kabul_time(published),
         "importance": importance, "relevance_score": analysis["score"],
         "relevance": analysis["label"], "category": analysis["category"],
