@@ -26,15 +26,50 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: ${{ github.ref }}
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
       - name: Install libraries
         run: pip install -r requirements.txt
-      - name: Send daily digest
+
+      - name: Send daily digest and generate website report
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
         run: python daily_digest.py
+
+      - name: Check dashboard publishing token
+        env:
+          DASHBOARD_REPO_TOKEN: ${{ secrets.DASHBOARD_REPO_TOKEN }}
+        run: |
+          if [ -z "$DASHBOARD_REPO_TOKEN" ]; then
+            echo "DASHBOARD_REPO_TOKEN is missing."
+            exit 1
+          fi
+
+      - name: Checkout public dashboard
+        uses: actions/checkout@v5
+        with:
+          repository: artin504030-source/GoldNewsDashboard
+          ref: main
+          path: dashboard-site
+          token: ${{ secrets.DASHBOARD_REPO_TOKEN }}
+
+      - name: Publish daily report and latest archive
+        run: |
+          cp daily_report.json dashboard-site/daily_report.json
+          cp news_archive.json dashboard-site/news_archive.json
+          cd dashboard-site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add daily_report.json news_archive.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish latest daily gold report and news archive"
+            git push origin HEAD:main
+          else
+            echo "Dashboard data is already up to date."
+          fi

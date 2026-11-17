@@ -1,3 +1,4 @@
+import json
 import os
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -10,6 +11,7 @@ BASE = Path(__file__).resolve().parent
 load_dotenv(BASE / ".env")
 TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
+REPORT_FILE = BASE / "daily_report.json"
 
 
 def send(message):
@@ -47,6 +49,7 @@ def recent_archive_items(now):
 
 def build_digest(now):
     recent = recent_archive_items(now)
+
     def score(item):
         try:
             relevance_score = int(item.get("relevance_score", 0) or 0)
@@ -83,12 +86,12 @@ def build_digest(now):
     if not recent:
         lines.append("در ۲۴ ساعت گذشته خبر تازه‌ای در آرشیو ثبت نشده است.")
 
+    events = []
     lines.extend(["", "📅 رویدادهای تقویم اقتصادی | Forex Factory"])
     try:
         events = fetch_calendar_events(12)
         if events:
             for event in events:
-                # فید این تقویم منطقه زمانی را مشخص نمی‌کند؛ زمان به کابل تبدیل نمی‌شود.
                 lines.append(
                     f"• {event['country']} | {event['title']} | {event['date']} {event['time']} "
                     f"(منطقه زمانی منبع نامشخص) | اهمیت: {event['impact']} | "
@@ -101,7 +104,22 @@ def build_digest(now):
         lines.append("تقویم اقتصادی فعلاً در دسترس نیست؛ زمان رویدادها را از منبع رسمی بررسی کنید.")
 
     lines.extend(["", "🔎 آرشیو و جست‌وجوی خبرها: بخش dashboard مخزن GoldNewsBot"])
-    return "\n".join(lines)[:3900]
+    message = "\n".join(lines)[:3900]
+
+    # Publish the exact bot-generated report data for the public website.
+    report = {
+        "generated_at_utc": now.isoformat(),
+        "generated_at_kabul": kabul_time(now),
+        "window_hours": 24,
+        "message": message,
+        "news": recent[:30],
+        "calendar_events": events,
+        "calendar_source": "Forex Factory public weekly XML feed",
+        "calendar_timezone_note": "Source timezone is unspecified; event times are shown as provided."
+    }
+    REPORT_FILE.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Dashboard report saved: {REPORT_FILE.name} ({len(recent)} news items, {len(events)} calendar events)")
+    return message
 
 
 def main():
