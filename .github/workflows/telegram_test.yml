@@ -1,0 +1,29 @@
+name: Telegram Delivery Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send-test-message:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send one clearly labeled test message
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
+            echo "Required Telegram secrets are missing."
+            exit 1
+          fi
+          message="🧪 پیام آزمایشی ربات Gold News\n\nاین پیام فقط برای بررسی اتصال تلگرام ارسال شده است. خبر یا سیگنال معاملاتی نیست."
+          response="$(curl --silent --show-error --fail \
+            --request POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHANNEL_ID}" \
+            --data-urlencode "text=${message}")"
+          echo "$response" | jq -e '.ok == true' >/dev/null
+          echo "Telegram test message delivered successfully."
