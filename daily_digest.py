@@ -1,4 +1,5 @@
 import os
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import requests
@@ -11,55 +12,104 @@ TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 
-def send(text):
+def send(message):
     if os.getenv("DRY_RUN", "false").lower() == "true":
-        print("[DRY RUN] Daily digest preview (not sent):\n" + text)
+        print("[DRY RUN] Daily digest preview (not sent):\n" + message)
         return
     if not TOKEN or not CHANNEL_ID:
         raise SystemExit("Telegram settings missing")
-    response = requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        data={"chat_id": CHANNEL_ID, "text": text, "disable_web_page_preview": True}, timeout=25)
+    response = requests.post(
+        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+        data={"chat_id": CHANNEL_ID, "text": message, "disable_web_page_preview": True},
+        timeout=25,
+    )
     response.raise_for_status()
     result = response.json()
     if not result.get("ok"):
         raise RuntimeError(str(result))
 
 
-def main():
-    now = datetime.now(timezone.utc)
+def recent_archive_items(now):
     cutoff = now - timedelta(hours=24)
     recent = []
     for item in load_archive():
+        raw = item.get("archived_at_utc") or item.get("published_utc") or ""
         try:
-            stamp = datetime.fromisoformat(item.get("archived_at_utc", "").replace("Z", "+00:00"))
-            if stamp >= cutoff:
+            stamp = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if stamp.tzinfo is None:
+                stamp = stamp.replace(tzinfo=timezone.utc)
+            if cutoff <= stamp.astimezone(timezone.utc) <= now:
                 recent.append(item)
-        except Exception:
+        except (TypeError, ValueError):
             continue
-    recent.sort(key=lambda x: (x.get("relevance_score", 0), x.get("importance", "")), reverse=True)
-    lines = ["📊 گزارش روزانه فاندامنتال طلا", f"🕒 زمان گزارش: {kabul_time(now)}", "",
-             "این گزارش فقط مرور خبرهاست و پیش‌بینی جهت قیمت یا سیگنال معاملاتی نیست.", "",
-             f"📰 خبرهای ثبت‌شده در ۲۴ ساعت گذشته: {len(recent)}"]
-    for item in recent[:10]:
-        lines.extend([f"• {item.get('title','بدون عنوان')}",
-                      f"  ارتباط با طلا: {item.get('relevance','نامشخص')} ({item.get('relevance_score',0)}/100) | اهمیت: {item.get('importance','نامشخص')}",
-                      f"  منبع: {item.get('source','نامشخص')} | {item.get('published_kabul','')}",
-                      f"  {item.get('link','')}"])
+    return recent
+
+
+def build_digest(now):
+    recent = recent_archive_items(now)
+    def score(item):
+        try:
+            relevance_score = int(item.get("relevance_score", 0) or 0)
+        except (TypeError, ValueError):
+            relevance_score = 0
+        return relevance_score, {"زیاد": 3, "متوسط": 2, "کم": 1}.get(item.get("importance"), 0)
+
+    recent.sort(key=score, reverse=True)
+    importance = Counter(x.get("importance", "نامشخص") for x in recent)
+    categories = Counter(x.get("category", "نامشخص") for x in recent)
+    lines = [
+        "📊 گزارش روزانه فاندامنتال طلا | Gold News",
+        f"🕒 زمان تهیه: {kabul_time(now)}",
+        "",
+        "این گزارش مرور داده‌ها و خبرهای ثبت‌شده است؛ پیش‌بینی جهت قیمت یا سیگنال معاملاتی نیست.",
+        "",
+        f"📰 تعداد خبرهای ثبت‌شده در ۲۴ ساعت گذشته: {len(recent)}",
+        f"🔴 اهمیت زیاد: {importance.get('زیاد', 0)} | 🟠 متوسط: {importance.get('متوسط', 0)} | 🟢 کم: {importance.get('کم', 0)}",
+    ]
+    if categories:
+        lines.append("دسته‌های خبری: " + "؛ ".join(f"{name}: {count}" for name, count in categories.most_common(5)))
+    lines.append("")
+    lines.append("⭐ خبرهای مهم و مرتبط با طلا:")
+    for item in recent[:8]:
+        title = item.get("title", "بدون عنوان")
+        lines.extend([
+            f"• {title}",
+            f"  ارتباط با طلا: {item.get('relevance', 'نامشخص')} ({item.get('relevance_score', 0)}/100) | اهمیت: {item.get('importance', 'نامشخص')}",
+            f"  دسته: {item.get('category', 'نامشخص')} | منبع: {item.get('source', 'نامشخص')}",
+            f"  زمان کابل: {item.get('published_kabul', 'نامشخص')}",
+            f"  منابع ثبت‌کننده: {', '.join(item.get('confirmed_sources') or [item.get('source', 'نامشخص')])}",
+            f"  {item.get('link', '')}",
+        ])
     if not recent:
-        lines.append("در آرشیو ۲۴ ساعت گذشته خبری ثبت نشده است.")
-    lines.extend(["", "📅 رویدادهای تقویم اقتصادی (منبع: Forex Factory)"])
+        lines.append("در ۲۴ ساعت گذشته خبر تازه‌ای در آرشیو ثبت نشده است.")
+
+    lines.extend(["", "📅 رویدادهای تقویم اقتصادی | Forex Factory"])
     try:
-        events = fetch_calendar_events(15)
+        events = fetch_calendar_events(12)
         if events:
-            for e in events:
-                lines.append(f"• {e['country']} | {e['title']} | زمان درج‌شده در فید (منطقه زمانی نامشخص): {e['date']} {e['time']} | اهمیت: {e['impact']} | پیش‌بینی: {e['forecast'] or '—'} | قبلی: {e['previous'] or '—'}")
+            for event in events:
+                # فید این تقویم منطقه زمانی را مشخص نمی‌کند؛ زمان به کابل تبدیل نمی‌شود.
+                lines.append(
+                    f"• {event['country']} | {event['title']} | {event['date']} {event['time']} "
+                    f"(منطقه زمانی منبع نامشخص) | اهمیت: {event['impact']} | "
+                    f"پیش‌بینی: {event['forecast'] or '—'} | قبلی: {event['previous'] or '—'}"
+                )
         else:
             lines.append("رویدادی از فید تقویم دریافت نشد.")
     except Exception as exc:
         print("Calendar unavailable:", exc)
-        lines.append("تقویم اقتصادی فعلاً در دسترس نیست؛ زمان‌بندی رویدادها را از منبع رسمی بررسی کنید.")
-    send("\n".join(lines)[:3900])
-    print("Daily fundamental digest sent")
+        lines.append("تقویم اقتصادی فعلاً در دسترس نیست؛ زمان رویدادها را از منبع رسمی بررسی کنید.")
+
+    lines.extend(["", "🔎 آرشیو و جست‌وجوی خبرها: بخش dashboard مخزن GoldNewsBot"])
+    return "\n".join(lines)[:3900]
+
+
+def main():
+    now = datetime.now(timezone.utc)
+    message = build_digest(now)
+    send(message)
+    print("Daily fundamental digest completed")
+
 
 if __name__ == "__main__":
     main()
