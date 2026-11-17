@@ -6,6 +6,8 @@ import time
 import requests
 import feedparser
 
+from gold_news_features import analyse_news, kabul_time, load_archive, is_duplicate, archive_news, source_status
+
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
@@ -342,6 +344,9 @@ def make_message(source, entry):
     raw_summary = clean_text(entry.get("summary", ""))
     link = entry.get("link", "")
     published = entry.get("published", "زمان نامشخص")
+    published_dt = entry_datetime(entry)
+    kabul_published = kabul_time(published_dt) if published_dt else "زمان نامشخص"
+    relevance = analyse_news(title, raw_summary)
 
     # خلاصه تکراری عنوان را به‌عنوان خلاصه مستقل نمایش نمی‌دهیم.
     summary = raw_summary
@@ -372,8 +377,11 @@ def make_message(source, entry):
         f"نماد خبر: {symbols}\n"
         f"📰 عنوان: {persian_title}\n"
         f"اهمیت خبر: {importance}\n"
-        f"🏛 منبع: {source}\n"
-        f"🕒 زمان انتشار: {published}\n\n"
+        f"ارتباط با طلا: {relevance['label']} ({relevance['score']}/100)\n"
+        f"دسته‌بندی: {relevance['category']}\n"
+        f"🏛 منبع: {source} ({source_status(source)})\n"
+        f"🕒 زمان انتشار منبع: {published}\n"
+        f"🕒 زمان کابل: {kabul_published}\n\n"
         "🇬🇧 ENGLISH SUMMARY:\n"
         f"{english_summary}\n\n"
         "🇮🇷 خلاصه فارسی:\n"
@@ -387,6 +395,7 @@ def main():
     seen = load_seen()
     initialized = STATE_FILE.exists()
     sent_count = 0
+    archive = load_archive()
     stop_sending = False
 
     print("Gold News Bot started.")
@@ -431,6 +440,12 @@ def main():
                     print("Filtered irrelevant news:", title)
                     continue
 
+                if is_duplicate(title, entry.get("link", ""), archive):
+                    seen.add(uid)
+                    save_seen(seen)
+                    print("Skipped cross-feed duplicate:", title)
+                    continue
+
                 symbols = detect_symbols(title, summary)
                 importance = detect_importance(title, summary)
                 print(
@@ -450,6 +465,9 @@ def main():
                 # فقط پس از تأیید موفق تلگرام خبر در سوابق ثبت می‌شود.
                 seen.add(uid)
                 save_seen(seen)
+                published_dt = entry_datetime(entry)
+                archive_news(source, title, summary, entry.get("link", ""), published_dt.isoformat() if published_dt else "", importance)
+                archive = load_archive()
                 sent_count += 1
                 print("News sent successfully:", title)
                 time.sleep(3)

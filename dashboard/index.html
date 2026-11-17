@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gold News Archive</title>
+<style>body{font-family:Tahoma,Arial,sans-serif;max-width:1050px;margin:30px auto;padding:0 16px;background:#10151d;color:#edf2f7}input,select{padding:10px;margin:5px;border-radius:8px;border:1px solid #526070;background:#1b2633;color:white}.item{padding:14px;margin:12px 0;background:#1b2633;border-radius:10px}.muted{color:#b5c2d0;font-size:13px}a{color:#7cc4ff}</style></head>
+<body><h2>آرشیو اخبار گلد نیوز</h2><p class="muted">این داشبورد فقط اخبار آرشیوشده را جست‌وجو می‌کند؛ اطلاعات به‌صورت خودکار از فایل news_archive.json خوانده می‌شود.</p>
+<input id="q" placeholder="جست‌وجوی عنوان یا خلاصه"><select id="cat"><option value="">همه دسته‌ها</option></select><select id="imp"><option value="">همه اهمیت‌ها</option><option>زیاد</option><option>متوسط</option><option>کم</option></select><div id="items">در حال بارگذاری آرشیو…</div>
+<script>
+let all=[];const q=document.getElementById('q'),cat=document.getElementById('cat'),imp=document.getElementById('imp'),box=document.getElementById('items');
+function render(){const term=q.value.toLowerCase();const rows=all.filter(x=>(!term||(x.title+' '+x.summary+' '+x.source).toLowerCase().includes(term))&&(!cat.value||x.category===cat.value)&&(!imp.value||x.importance===imp.value));box.innerHTML=rows.slice().reverse().map(x=>`<article class="item"><b>${esc(x.title||'بدون عنوان')}</b><p>${esc(x.summary||'')}</p><div class="muted">${esc(x.published_kabul||'')} | ${esc(x.source||'')} | اهمیت: ${esc(x.importance||'')} | ارتباط با طلا: ${esc(x.relevance||'')} (${x.relevance_score||0}/100)</div><a href="${safe(x.link)}" target="_blank" rel="noopener">گزارش اصلی</a></article>`).join('')||'خبری با این مشخصات پیدا نشد.'}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function safe(s){try{let u=new URL(s);return ['http:','https:'].includes(u.protocol)?u.href:'#'}catch{return '#'}}
+fetch('../news_archive.json').then(r=>{if(!r.ok)throw Error('آرشیو در دسترس نیست');return r.json()}).then(data=>{all=Array.isArray(data)?data:[];[...new Set(all.map(x=>x.category).filter(Boolean))].sort().forEach(v=>{let o=document.createElement('option');o.value=v;o.textContent=v;cat.append(o)});render()}).catch(e=>box.textContent='برای نمایش داشبورد، GitHub Pages باید فعال شود و فایل news_archive.json در دسترس باشد.');q.oninput=cat.onchange=imp.onchange=render;
+</script></body></html>
