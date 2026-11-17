@@ -400,6 +400,7 @@ def main():
     seen = load_seen()
     initialized = STATE_FILE.exists()
     sent_count = 0
+    preview_count = 0
     archive = load_archive()
     stop_sending = False
 
@@ -409,14 +410,14 @@ def main():
     print("Maximum news age (hours):", MAX_AGE_HOURS)
 
     for source, url in FEEDS.items():
-        if stop_sending or sent_count >= MAX_NEWS_PER_RUN:
+        if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN:
             break
 
         try:
             entries = get_entries(url)
 
             for entry in reversed(entries):
-                if stop_sending or sent_count >= MAX_NEWS_PER_RUN:
+                if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN:
                     break
 
                 uid = source + ":" + entry_id(entry)
@@ -463,6 +464,10 @@ def main():
                 try:
                     sent = send_telegram(message)
                     if not sent:
+                        preview_count += 1
+                        print("Dry-run candidate checked:", preview_count)
+                        if preview_count >= MAX_NEWS_PER_RUN:
+                            break
                         continue
                 except TelegramRateLimitError as error:
                     print("Stopping sends due to Telegram limit:", error)
@@ -487,6 +492,8 @@ def main():
         print("Initial news history saved. No old news was sent.")
 
     print("News sent in this run:", sent_count)
+    if preview_count:
+        print("Dry-run candidates previewed:", preview_count)
     print("Seen items saved:", len(seen))
     print("News check completed.")
 
