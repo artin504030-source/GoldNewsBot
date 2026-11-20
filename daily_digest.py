@@ -92,10 +92,14 @@ def build_digest(now):
         events = fetch_calendar_events(12)
         if events:
             for event in events:
+                related = ", ".join(event.get("related_symbols", [])[:7]) or "ارتباط نماد مشخص نیست"
+                currency = event.get("currency", "نامشخص")
+                impact = event.get("impact_level", event.get("impact", "نامشخص"))
                 lines.append(
-                    f"• {event['country']} | {event['title']} | {event['date']} {event['time']} "
-                    f"(منطقه زمانی منبع نامشخص) | اهمیت: {event['impact']} | "
-                    f"پیش‌بینی: {event['forecast'] or '—'} | قبلی: {event['previous'] or '—'}"
+                    f"• {event['country']} ({currency}) | {event['title']} | {event['date']} {event['time']} "
+                    f"(timezone منبع نامشخص) | اهمیت: {impact} | "
+                    f"پیش‌بینی: {event['forecast'] or '—'} | قبلی: {event['previous'] or '—'} | "
+                    f"نمادهای مرتبط: {related}"
                 )
         else:
             lines.append("رویدادی از فید تقویم دریافت نشد.")
@@ -115,7 +119,8 @@ def build_digest(now):
         "news": recent[:30],
         "calendar_events": events,
         "calendar_source": "Forex Factory public weekly XML feed",
-        "calendar_timezone_note": "Source timezone is unspecified; event times are shown as provided."
+        "calendar_timezone_note": "Source timezone is unspecified; event times are shown as provided; no conversion applied.",
+        "calendar_currency_mapping": "Country/currency associations and related symbols are heuristic context, not price predictions."
     }
     REPORT_FILE.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Dashboard report saved: {REPORT_FILE.name} ({len(recent)} news items, {len(events)} calendar events)")

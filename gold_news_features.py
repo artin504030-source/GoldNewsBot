@@ -149,8 +149,43 @@ def archive_news(source, title, summary, link, published, importance):
     save_archive(items)
 
 
+# Economic-calendar country/currency relationships for a cross-market digest.
+COUNTRY_CURRENCIES = {
+    "USD": "USD", "United States": "USD", "US": "USD", "USA": "USD",
+    "EUR": "EUR", "Eurozone": "EUR", "European Union": "EUR", "Germany": "EUR", "France": "EUR", "Italy": "EUR", "Spain": "EUR",
+    "GBP": "GBP", "United Kingdom": "GBP", "UK": "GBP", "Britain": "GBP",
+    "JPY": "JPY", "Japan": "JPY", "CAD": "CAD", "Canada": "CAD",
+    "AUD": "AUD", "Australia": "AUD", "NZD": "NZD", "New Zealand": "NZD",
+    "CHF": "CHF", "Switzerland": "CHF", "CNY": "CNY", "China": "CNY",
+}
+CURRENCY_SYMBOLS = {
+    "USD": ["XAUUSD", "XAGUSD", "DXY", "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "USDCHF", "AUDUSD", "NZDUSD", "US indices", "US10Y"],
+    "EUR": ["EURUSD", "EURGBP", "EURJPY", "EURAUD", "EURCAD", "EURCHF", "EURNZD"],
+    "GBP": ["GBPUSD", "GBPJPY", "GBPCHF", "GBPAUD", "GBPCAD", "GBPNZD", "EURGBP"],
+    "JPY": ["USDJPY", "EURJPY", "GBPJPY", "AUDJPY", "CADJPY", "CHFJPY", "NZDJPY"],
+    "CAD": ["USDCAD", "CADJPY", "EURCAD", "GBPCAD", "AUDCAD", "CADCHF"],
+    "AUD": ["AUDUSD", "AUDJPY", "AUDCAD", "EURAUD", "GBPAUD", "AUDNZD", "AUDCHF"],
+    "NZD": ["NZDUSD", "NZDJPY", "AUDNZD", "EURNZD", "GBPNZD", "NZDCAD", "NZDCHF"],
+    "CHF": ["USDCHF", "CHFJPY", "EURCHF", "GBPCHF", "AUDCHF", "NZDCHF", "CADCHF"],
+    "CNY": ["USDCNH", "AUDUSD", "XAUUSD", "global indices/commodities"],
+}
+
+def normalize_calendar_impact(value):
+    text = (value or "").strip().lower()
+    if "high" in text or "red" in text:
+        return "زیاد"
+    if "medium" in text or "moderate" in text or "orange" in text:
+        return "متوسط"
+    if "low" in text or "yellow" in text:
+        return "کم"
+    return "نامشخص"
+
+def _calendar_currency(country):
+    raw = (country or "").strip()
+    return COUNTRY_CURRENCIES.get(raw, COUNTRY_CURRENCIES.get(raw.upper(), ""))
+
 def fetch_calendar_events(limit=12):
-    """Read the public Forex Factory weekly XML calendar; timestamps without offsets remain unconverted."""
+    """Read the public weekly calendar; preserve source times (timezone is not supplied)."""
     import requests
     import xml.etree.ElementTree as ET
     url = "https://nfs.faireconomy.media/ff_calendar_thisweek.xml"
@@ -158,14 +193,31 @@ def fetch_calendar_events(limit=12):
     response.raise_for_status()
     root = ET.fromstring(response.content)
     events = []
-    now = datetime.now(timezone.utc)
-    for node in root.findall(".//event"):
+    for index, node in enumerate(root.findall(".//event")):
         get = lambda name: (node.findtext(name) or "").strip()
         title, country, date, clock, impact = get("title"), get("country"), get("date"), get("time"), get("impact")
         if not title or not date:
             continue
+        currency = _calendar_currency(country)
+        symbols = CURRENCY_SYMBOLS.get(currency, [])
         stamp = date + (" " + clock if clock else "")
-        events.append({"title": title, "country": country, "date": date, "time": clock,
-                       "impact": impact, "forecast": get("forecast"), "previous": get("previous"),
-                       "source_time": stamp})
-    return events[:limit]
+        events.append({
+            "title": title, "country": country, "currency": currency or "نامشخص",
+            "date": date, "time": clock, "impact": impact,
+            "impact_level": normalize_calendar_impact(impact),
+            "forecast": get("forecast"), "previous": get("previous"),
+            "source_time": stamp, "timezone": "نامشخص",
+            "related_symbols": symbols, "calendar_order": index,
+        })
+    # Date sorting is safe; exact time conversion/filtering is intentionally avoided
+    # because the source feed does not provide a timezone offset.
+    def date_key(event):
+        from datetime import datetime
+        for fmt in ("%m-%d-%Y", "%Y-%m-%d", "%b %d, %Y", "%B %d, %Y"):
+            try:
+                return datetime.strptime(event["date"], fmt).date().isoformat()
+            except ValueError:
+                pass
+        return event["date"]
+    events.sort(key=lambda e: (date_key(e), e.get("calendar_order", 0)))
+    return events[:max(0, int(limit))]
