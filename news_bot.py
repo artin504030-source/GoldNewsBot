@@ -8,6 +8,7 @@ import feedparser
 
 from gold_news_features import analyse_news, kabul_time, load_archive, is_duplicate, archive_news, source_status, record_source_confirmation
 from market_analysis import analyze_market_news
+from cross_market_impact import analyze_cross_market_impact
 from breaking_news_analysis import score_breaking_news, format_breaking_badge
 from source_health import record_source_check
 
@@ -39,7 +40,7 @@ BREAKING_TERMS = (
     "rate hike announced", "military strike", "airstrike", "missile attack", "invasion",
     "major escalation", "ceasefire agreement", "bank collapse", "bank failure",
     "bank defaults", "sovereign default", "financial panic", "emergency sanctions",
-    "explosion", "attack on", "central bank intervention"
+    "explosion", "attack on", "central bank intervention", "strait of hormuz", "oil tanker", "pipeline disruption", "oil export ban", "oil embargo", "opec+", "shipping attack"
 )
 TRANSLATION_DELAY = 1.0
 
@@ -57,12 +58,16 @@ FEEDS = {
     "Economic Reports": "https://news.google.com/rss/search?q=CPI+OR+PCE+OR+GDP+OR+NFP+OR+inflation+OR+interest+rates+OR+unemployment+OR+PMI&hl=en-US&gl=US&ceid=US:en",
     "Geopolitical News": "https://news.google.com/rss/search?q=war+OR+sanctions+OR+Iran+OR+Israel+OR+Ukraine+OR+China+OR+trade+war+OR+tariffs&hl=en-US&gl=US&ceid=US:en",
     "Oil and Energy": "https://news.google.com/rss/search?q=crude+oil+OR+OPEC+OR+oil+prices+OR+natural+gas+OR+energy+markets&hl=en-US&gl=US&ceid=US:en",
+    "Oil Trade and Supply": "https://news.google.com/rss/search?q=oil+exports+OR+oil+imports+OR+crude+oil+exports+OR+oil+production+OR+oil+supply+OR+OPEC%2B+OR+oil+embargo&hl=en-US&gl=US&ceid=US:en",
+    "Energy Shipping Routes": "https://news.google.com/rss/search?q=Strait+of+Hormuz+OR+Red+Sea+shipping+OR+Suez+Canal+OR+Bab+el-Mandeb+OR+oil+tanker+OR+pipeline+disruption&hl=en-US&gl=US&ceid=US:en",
+    "Conflict and Security": "https://news.google.com/rss/search?q=war+OR+military+attack+OR+airstrike+OR+missile+OR+invasion+OR+ceasefire+OR+peace+talks+OR+geopolitical+crisis+OR+sanctions&hl=en-US&gl=US&ceid=US:en",
+    "Trade and Sanctions": "https://news.google.com/rss/search?q=trade+sanctions+OR+oil+sanctions+OR+export+ban+OR+import+restrictions+OR+tariffs+OR+trade+embargo+OR+shipping+restrictions&hl=en-US&gl=US&ceid=US:en",
     "China and Global Markets": "https://news.google.com/rss/search?q=China+economy+OR+Asian+markets+OR+Wall+Street+OR+stock+markets+OR+global+economy&hl=en-US&gl=US&ceid=US:en",
 }
 
 BREAKING_FEEDS = {
     name: url for name, url in FEEDS.items()
-    if name in {"Federal Reserve", "BLS", "BEA", "European Central Bank", "Bank of England", "Bank of Japan", "Geopolitical News", "Economic Reports"}
+    if name in {"Federal Reserve", "BLS", "BEA", "European Central Bank", "Bank of England", "Bank of Japan", "Geopolitical News", "Conflict and Security", "Oil Trade and Supply", "Energy Shipping Routes", "Trade and Sanctions", "Economic Reports"}
 }
 
 EXCLUDE_TERMS = [
@@ -74,7 +79,7 @@ RELEVANCE_GROUPS = [
     ["gold price", "gold market", "gold futures", "gold bullion", "bullion market", "gold etf", "gold demand", "gold reserves", "central bank gold", "gold holdings", "precious metals", "precious metal prices", "gold investment", "gold trading", "gold drops", "gold rises", "gold tumbles", "gold rally"],
     ["federal reserve", "fomc", "fed rate", "fed funds", "us cpi", "u.s. cpi", "core cpi", "pce inflation", "nonfarm payroll", "non-farm payroll", "treasury yield", "us dollar", "u.s. dollar", "dollar index", "dxy", "us inflation", "u.s. inflation", "us economy", "u.s. economy", "interest rate decision"],
     ["european central bank", "ecb", "eurozone inflation", "euro area inflation", "bank of england", "boe rate", "bank of japan", "boj", "japanese yen", "gdp growth", "inflation report", "retail sales report", "unemployment rate", "employment report", "pmi report", "bond yields", "treasury yields", "forex market", "foreign exchange market", "currency markets"],
-    ["iran sanctions", "iran israel", "middle east conflict", "military strike", "airstrike", "ceasefire", "russia ukraine", "trade war", "tariffs", "oil prices", "crude oil", "opec", "china economy", "global financial markets", "banking crisis", "financial crisis"]
+    ["iran sanctions", "iran israel", "middle east conflict", "military strike", "airstrike", "ceasefire", "russia ukraine", "trade war", "tariffs", "oil prices", "crude oil", "opec", "china economy", "global financial markets", "banking crisis", "financial crisis", "oil exports", "oil imports", "oil supply", "oil production", "oil embargo", "oil tanker", "strait of hormuz", "red sea shipping", "suez canal", "bab el-mandeb", "pipeline disruption", "export ban", "import restrictions", "shipping attack", "trade sanctions"]
 ]
 HIGH_IMPORTANCE = ["fomc rate decision", "fed rate decision", "interest rate decision", "rate decision", "cpi report", "core cpi", "nonfarm payroll", "non-farm payroll", "nfp report", "pce inflation", "central bank gold reserves", "central bank cuts rates", "central bank raises rates", "emergency rate", "military strike", "invasion", "major escalation", "ceasefire agreement", "banking crisis", "financial crisis"]
 MEDIUM_IMPORTANCE = ["inflation", "interest rate", "monetary policy", "gdp", "unemployment", "employment", "retail sales", "treasury yields", "bond yields", "sanctions", "trade war", "tariffs", "economic growth", "central bank", "gold demand", "gold reserves", "oil prices", "forex", "currency"]
@@ -251,7 +256,8 @@ def make_message(source, entry):
     symbols = detect_symbols(title, raw_summary)
     importance = detect_importance(title, raw_summary)
     market_analysis = analyze_market_news(title, raw_summary)
-    affected_symbols = ", ".join(market_analysis["symbols"])
+    cross_impact = analyze_cross_market_impact(title, raw_summary)
+    affected_symbols = ", ".join(dict.fromkeys(market_analysis["symbols"] + cross_impact["symbols"]))
     persian_title = translate_to_persian(title)
     time.sleep(TRANSLATION_DELAY)
     persian_summary = translate_to_persian(summary) if summary else "منبع خبری خلاصه تکمیلی ارائه نکرده است."
@@ -268,6 +274,10 @@ def make_message(source, entry):
         f"🔎 لحن خبر: {market_analysis['potential_effect']}\n"
         f"🎚 اطمینان: {market_analysis['confidence']}\n"
         f"🧠 توضیح: {market_analysis['reason']}\n"
+        f"🌍 حوزه ژئوپولیتیکی/اقتصادی: {', '.join(cross_impact['categories']) or 'تشخیص داده نشد'}\n"
+        f"🎯 اثر مستقیم احتمالی: {', '.join(cross_impact['direct_effect']) or 'نامشخص'}\n"
+        f"🔗 اثرات غیرمستقیم: {', '.join(cross_impact['indirect_effect']) or 'نامشخص'}\n"
+        f"⚠️ ارزیابی: {cross_impact['note']}\n"
         f"دسته‌بندی: {relevance['category']}\n"
         f"🏛 منبع: {source} ({source_status(source)})\n"
         f"🕒 زمان انتشار منبع: {published}\n"

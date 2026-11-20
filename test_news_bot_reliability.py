@@ -29,4 +29,21 @@ class ReliabilityTests(unittest.TestCase):
   with patch.object(news_bot.requests,'post',side_effect=[news_bot.requests.ConnectionError('offline'),b]),patch.object(news_bot.time,'sleep'):
    self.assertTrue(news_bot.send_telegram('hello'))
  def test_limits_have_safe_minimum(self):self.assertGreaterEqual(news_bot.MAX_NEWS_PER_RUN,1);self.assertGreaterEqual(news_bot.MAX_AGE_HOURS,1)
+
+ def test_geopolitical_and_energy_feeds_are_enabled(self):
+  for name in ('Conflict and Security','Oil Trade and Supply','Energy Shipping Routes','Trade and Sanctions'):
+   self.assertIn(name,news_bot.FEEDS);self.assertIn(name,news_bot.BREAKING_FEEDS)
+ def test_oil_import_export_news_is_relevant(self):
+  self.assertTrue(news_bot.is_relevant('OPEC+ cuts oil exports','Crude oil supply tightens'))
+  self.assertTrue(news_bot.is_relevant('New sanctions restrict oil imports',''))
+ def test_shipping_chokepoint_is_classified_as_energy_and_geopolitical(self):
+  from cross_market_impact import analyze_cross_market_impact
+  result=analyze_cross_market_impact('Attack on oil tankers in the Strait of Hormuz')
+  self.assertIn('risk_geopolitical',result['categories']);self.assertIn('energy',result['categories'])
+  self.assertIn('USOIL',result['symbols']);self.assertIn('XAUUSD',result['symbols'])
+ def test_trade_sanctions_classification(self):
+  from cross_market_impact import analyze_cross_market_impact
+  result=analyze_cross_market_impact('New oil export ban and trade sanctions announced')
+  self.assertIn('trade_sanctions',result['categories']);self.assertIn('UKOIL',result['symbols'])
+
 if __name__=='__main__':unittest.main()
