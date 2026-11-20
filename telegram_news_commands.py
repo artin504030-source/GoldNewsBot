@@ -6,7 +6,7 @@ ARCHIVE=ROOT/'news_archive.json'
 OFFSET=ROOT/'telegram_update_offset.json'
 TOKEN=os.getenv('BOT_TOKEN')
 API=f'https://api.telegram.org/bot{TOKEN}' if TOKEN else ''
-ALIASES={'/today':'day','/daily':'day','/day':'day','/week':'week','/weekly':'week','/month':'month','/monthly':'month'}
+ALIASES={'/today':'day','/daily':'day','/day':'day','/news_today':'day','/week':'week','/weekly':'week','/news_week':'week','/month':'month','/monthly':'month','/news_month':'month'}
 PERIODS={'day':('🗞 اخبار روز',1),'week':('📰 اخبار هفته',7),'month':('🌍 اخبار ماه',30)}
 def parse_time(item):
     for key in ('published_utc','archived_at_utc'):
@@ -45,9 +45,9 @@ def format_period_news(period,items,now=None,limit=8):
     return '\n'.join(lines)
 def help_message():
     return ('🤖 <b>دستورات اخبار گلد نیوز</b>\n\n'
-        '/today یا /daily — اخبار ۲۴ ساعت اخیر\n'
-        '/week یا /weekly — اخبار ۷ روز اخیر\n'
-        '/month یا /monthly — اخبار ۳۰ روز اخیر\n'
+        '/today، /daily یا /news_today — اخبار ۲۴ ساعت اخیر\n'
+        '/week، /weekly یا /news_week — اخبار ۷ روز اخیر\n'
+        '/month، /monthly یا /news_month — اخبار ۳۰ روز اخیر\n'
         '/help — راهنمای دستورات\n\nخبرها از آرشیو ثبت‌شده نمایش داده می‌شوند.')
 def build_reply(command,items,now=None):
     cmd=command.strip().split()[0].lower().split('@',1)[0]
