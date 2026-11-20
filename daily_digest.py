@@ -6,6 +6,7 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 from gold_news_features import load_archive, fetch_calendar_events, kabul_time
+from market_digest import build_multi_market_digest
 
 BASE = Path(__file__).resolve().parent
 load_dotenv(BASE / ".env")
@@ -49,82 +50,29 @@ def recent_archive_items(now):
 
 def build_digest(now):
     recent = recent_archive_items(now)
-
-    def score(item):
-        try:
-            relevance_score = int(item.get("relevance_score", 0) or 0)
-        except (TypeError, ValueError):
-            relevance_score = 0
-        return relevance_score, {"زیاد": 3, "متوسط": 2, "کم": 1}.get(item.get("importance"), 0)
-
-    recent.sort(key=score, reverse=True)
-    importance = Counter(x.get("importance", "نامشخص") for x in recent)
-    categories = Counter(x.get("category", "نامشخص") for x in recent)
-    lines = [
-        "📊 گزارش روزانه فاندامنتال طلا | Gold News",
-        f"🕒 زمان تهیه: {kabul_time(now)}",
-        "",
-        "این گزارش مرور داده‌ها و خبرهای ثبت‌شده است؛ پیش‌بینی جهت قیمت یا سیگنال معاملاتی نیست.",
-        "",
-        f"📰 تعداد خبرهای ثبت‌شده در ۲۴ ساعت گذشته: {len(recent)}",
-        f"🔴 اهمیت زیاد: {importance.get('زیاد', 0)} | 🟠 متوسط: {importance.get('متوسط', 0)} | 🟢 کم: {importance.get('کم', 0)}",
-    ]
-    if categories:
-        lines.append("دسته‌های خبری: " + "؛ ".join(f"{name}: {count}" for name, count in categories.most_common(5)))
-    lines.append("")
-    lines.append("⭐ خبرهای مهم و مرتبط با طلا:")
-    for item in recent[:8]:
-        title = item.get("title", "بدون عنوان")
-        lines.extend([
-            f"• {title}",
-            f"  ارتباط با طلا: {item.get('relevance', 'نامشخص')} ({item.get('relevance_score', 0)}/100) | اهمیت: {item.get('importance', 'نامشخص')}",
-            f"  دسته: {item.get('category', 'نامشخص')} | منبع: {item.get('source', 'نامشخص')}",
-            f"  زمان کابل: {item.get('published_kabul', 'نامشخص')}",
-            f"  منابع ثبت‌کننده: {', '.join(item.get('confirmed_sources') or [item.get('source', 'نامشخص')])}",
-            f"  {item.get('link', '')}",
-        ])
-    if not recent:
-        lines.append("در ۲۴ ساعت گذشته خبر تازه‌ای در آرشیو ثبت نشده است.")
-
     events = []
-    lines.extend(["", "📅 رویدادهای تقویم اقتصادی | Forex Factory"])
     try:
         events = fetch_calendar_events(12)
-        if events:
-            for event in events:
-                related = ", ".join(event.get("related_symbols", [])[:7]) or "ارتباط نماد مشخص نیست"
-                currency = event.get("currency", "نامشخص")
-                impact = event.get("impact_level", event.get("impact", "نامشخص"))
-                lines.append(
-                    f"• {event['country']} ({currency}) | {event['title']} | {event['date']} {event['time']} "
-                    f"(timezone منبع نامشخص) | اهمیت: {impact} | "
-                    f"پیش‌بینی: {event['forecast'] or '—'} | قبلی: {event['previous'] or '—'} | "
-                    f"نمادهای مرتبط: {related}"
-                )
-        else:
-            lines.append("رویدادی از فید تقویم دریافت نشد.")
     except Exception as exc:
         print("Calendar unavailable:", exc)
-        lines.append("تقویم اقتصادی فعلاً در دسترس نیست؛ زمان رویدادها را از منبع رسمی بررسی کنید.")
-
-    lines.extend(["", "🔎 آرشیو و جست‌وجوی خبرها: بخش dashboard مخزن GoldNewsBot"])
-    message = "\n".join(lines)[:3900]
-
-    # Publish the exact bot-generated report data for the public website.
+    multi = build_multi_market_digest(recent, events, kabul_time(now))
+    message = multi["message"]
     report = {
         "generated_at_utc": now.isoformat(),
         "generated_at_kabul": kabul_time(now),
         "window_hours": 24,
         "message": message,
-        "news": recent[:30],
-        "calendar_events": events,
+        "news": multi["news"],
+        "market_counts": multi["market_counts"],
+        "calendar_events": multi["calendar_events"],
         "calendar_source": "Forex Factory public weekly XML feed",
         "calendar_timezone_note": "Source timezone is unspecified; event times are shown as provided; no conversion applied.",
         "calendar_currency_mapping": "Country/currency associations and related symbols are heuristic context, not price predictions."
     }
     REPORT_FILE.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"Dashboard report saved: {REPORT_FILE.name} ({len(recent)} news items, {len(events)} calendar events)")
+    print(f"Dashboard multi-market report saved: {REPORT_FILE.name} ({len(recent)} news items, {len(events)} calendar events)")
     return message
+
 
 
 def main():
