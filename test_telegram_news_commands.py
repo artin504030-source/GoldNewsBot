@@ -11,6 +11,8 @@ class PeriodCommandTests(unittest.TestCase):
  def test_month_filter(self): self.assertIn('Old headline',format_period_news('month',ITEMS,NOW))
  def test_alias_help(self):
   self.assertIn('اخبار روز',build_reply('/daily',ITEMS,NOW)); self.assertIn('30 روز',build_reply('/month',ITEMS,NOW)); self.assertIn('دستورات',build_reply('/help',ITEMS,NOW))
+ def test_response_under_telegram_limit(self):
+  self.assertLessEqual(len(format_period_news('month',ITEMS*10,NOW)),4096)
  def test_html_escape(self):
   item=dict(ITEMS[0],title='A <B> risky'); self.assertIn('&lt;B&gt;',format_period_news('day',[item],NOW))
 if __name__=='__main__': unittest.main()

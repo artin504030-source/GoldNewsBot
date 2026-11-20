@@ -7,4 +7,4 @@ The independent GitHub Actions workflow checks Telegram commands every 5 minutes
 - `/month` or `/monthly`: archive news from the last 30 days
 - `/help`: command guide
 
-Replies include up to 10 headlines newest-first, category, importance, UTC timestamp, and source link. Requires `BOT_TOKEN` in Actions secrets. GitHub scheduled runs may be delayed.
+Replies include up to 8 headlines newest-first, category, importance, UTC timestamp, and source link. Requires `BOT_TOKEN` in Actions secrets. GitHub scheduled runs may be delayed.
