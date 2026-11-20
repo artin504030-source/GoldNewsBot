@@ -8,6 +8,7 @@ import feedparser
 
 from gold_news_features import analyse_news, kabul_time, load_archive, is_duplicate, archive_news, source_status, record_source_confirmation
 from market_analysis import analyze_market_news
+from breaking_news_analysis import score_breaking_news, format_breaking_badge
 
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -218,6 +219,7 @@ def make_message(source, entry):
     kabul_published = kabul_time(published_dt) if published_dt else "زمان نامشخص"
     relevance = analyse_news(title, raw_summary)
     breaking = is_breaking_news(title, raw_summary)
+    breaking_assessment = score_breaking_news(title, raw_summary, source=source)
     summary = raw_summary
     if summary.lower().strip() == title.lower().strip(): summary = ""
     summary = summary[:600]
@@ -233,6 +235,7 @@ def make_message(source, entry):
         "کانال خبری گلد نیوز | Gold News Channel\n"
         f"{'🚨 خبر فوری\n' if breaking else '🟡 گزارش خبری\n'}\n"
         f"نماد خبر: {symbols}\n"
+        f"🚨 درجه فوریت: {format_breaking_badge(breaking_assessment)}\n"
         f"📰 عنوان: {persian_title}\n"
         f"اهمیت خبر: {importance}\n"
         f"ارتباط با طلا: {relevance['label']} ({relevance['score']}/100)\n"
@@ -283,7 +286,8 @@ def main():
                 if not is_relevant(title, summary):
                     seen.add(uid); save_seen(seen)
                     print("Filtered irrelevant news:", title); continue
-                if BREAKING_ONLY and not is_breaking_news(title, summary): continue
+                assessment = score_breaking_news(title, summary, source=source)
+                if BREAKING_ONLY and assessment["score"] < assessment["threshold"]: continue
                 if is_duplicate(title, entry.get("link", ""), archive):
                     confirmations = record_source_confirmation(source, title, entry.get("link", ""))
                     print(f"Duplicate confirmed by another source; total sources={confirmations}:", title)
@@ -291,7 +295,7 @@ def main():
                     print("Skipped cross-feed duplicate:", title); continue
                 symbols = detect_symbols(title, summary)
                 importance = detect_importance(title, summary)
-                print(f"Candidate | importance={importance} | symbols={symbols} | title={title}")
+                print(f"Candidate | urgency={assessment['level']} score={assessment['score']} | importance={importance} | symbols={symbols} | title={title}")
                 message = make_message(source, entry)
                 try:
                     sent = send_telegram(message)
