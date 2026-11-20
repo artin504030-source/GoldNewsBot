@@ -2,6 +2,7 @@ import os
 import re
 import json
 import html
+from html.parser import HTMLParser
 import time
 import requests
 import feedparser
@@ -200,45 +201,179 @@ def detect_importance(title, summary):
     if any(term in text for term in MEDIUM_IMPORTANCE): return "متوسط"
     return "کم"
 
+class ArticleTextParser(HTMLParser):
+    """Extract readable article paragraphs while ignoring page chrome."""
+    BLOCKED = {"script", "style", "nav", "footer", "header", "aside", "form", "noscript", "svg"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.blocked_depth = 0
+        self.in_paragraph = False
+        self.current = []
+        self.paragraphs = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.BLOCKED:
+            self.blocked_depth += 1
+        elif tag == "p" and not self.blocked_depth:
+            self.in_paragraph = True
+            self.current = []
+
+    def handle_endtag(self, tag):
+        if tag in self.BLOCKED and self.blocked_depth:
+            self.blocked_depth -= 1
+        elif tag == "p" and self.in_paragraph:
+            value = re.sub(r"\s+", " ", " ".join(self.current)).strip()
+            if len(value) >= 35:
+                self.paragraphs.append(value)
+            self.current = []
+            self.in_paragraph = False
+
+    def handle_data(self, data):
+        if self.in_paragraph and not self.blocked_depth:
+            value = data.strip()
+            if value:
+                self.current.append(value)
+
+
+def fetch_article_text(url, fallback=""):
+    """Return article paragraphs; use RSS text only when page extraction fails."""
+    if url:
+        try:
+            response = requests.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; GoldNewsBot/2.0)"},
+                timeout=18,
+                allow_redirects=True,
+            )
+            response.raise_for_status()
+            parser = ArticleTextParser()
+            parser.feed(response.text)
+            paragraphs = list(dict.fromkeys(parser.paragraphs))
+            article = "\n\n".join(paragraphs)
+            if len(article) >= 450:
+                return article[:12000], True
+        except Exception as error:
+            print("Article extraction failed; using RSS fallback:", error)
+    return (clean_text(fallback)[:3000], False)
+
+
+def _translation_chunks(text, limit=430):
+    text = str(text or "").strip()
+    chunks = []
+    while text:
+        if len(text) <= limit:
+            chunks.append(text)
+            break
+        cut = text.rfind(" ", 0, limit + 1)
+        if cut < limit // 2:
+            cut = limit
+        chunks.append(text[:cut].strip())
+        text = text[cut:].strip()
+    return chunks
+
+
 def translate_to_persian(text):
-    if not text: return ""
-    try:
-        response = requests.get("https://api.mymemory.translated.net/get", params={"q": text[:4500], "langpair": "en|fa"}, timeout=20)
-        response.raise_for_status()
-        data = response.json()
-        if data.get("responseStatus") == 200:
-            return html.unescape(data["responseData"]["translatedText"])
-        print("Translation service:", data.get("responseDetails"))
-    except Exception as error:
-        print("Translation error:", error)
-    return "ترجمه فارسی فعلاً در دسترس نیست."
+    if not text:
+        return ""
+    translated = []
+    for chunk in _translation_chunks(text):
+        try:
+            response = requests.get(
+                "https://api.mymemory.translated.net/get",
+                params={"q": chunk, "langpair": "en|fa"},
+                timeout=25,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if str(data.get("responseStatus")) == "200":
+                translated.append(html.unescape(data["responseData"]["translatedText"]))
+            else:
+                detail = data.get("responseDetails") or "unknown translation error"
+                print("Translation service:", detail)
+                translated.append("[ترجمه این بخش در دسترس نیست]")
+        except Exception as error:
+            print("Translation error:", error)
+            translated.append("[ترجمه این بخش در دسترس نیست]")
+        if len(_translation_chunks(text)) > 1:
+            time.sleep(0.15)
+    return " ".join(part.strip() for part in translated if part.strip())
+
+
+def _telegram_parts(message, limit=3800):
+    remaining = str(message or "").strip()
+    parts = []
+    content_limit = limit - 80
+    while remaining:
+        if len(remaining) <= content_limit:
+            parts.append(remaining)
+            break
+        cut = remaining.rfind("\n\n", 0, content_limit + 1)
+        if cut < content_limit // 2:
+            cut = remaining.rfind("\n", 0, content_limit + 1)
+        if cut < content_limit // 2:
+            cut = remaining.rfind(" ", 0, content_limit + 1)
+        if cut < content_limit // 2:
+            cut = content_limit
+        parts.append(remaining[:cut].strip())
+        remaining = remaining[cut:].strip()
+    total = len(parts)
+    if total > 1:
+        parts = [f"📄 متن خبر | بخش {i + 1} از {total}\n\n{part}" for i, part in enumerate(parts)]
+    return parts
+
 
 def send_telegram(message):
     if os.getenv("DRY_RUN", "false").lower() == "true":
-        print("[DRY RUN] Telegram message was not sent:"); print(message[:1000]); return False
-    last_error = None
-    for attempt in range(3):
-        try:
-            response = requests.post(API_URL, data={"chat_id": CHANNEL_ID, "text": message, "disable_web_page_preview": True}, timeout=25)
-            try: result = response.json()
-            except Exception: result = {}
-            if response.status_code == 429:
-                retry_after = result.get("parameters", {}).get("retry_after", 30)
-                try: delay = max(1, min(int(retry_after), 300))
-                except (TypeError, ValueError): delay = 2 ** attempt
-                print(f"Telegram rate limit. Waiting {delay}s.")
-                if attempt == 2: raise TelegramRateLimitError(f"Telegram 429 after retries; retry_after={retry_after}")
-                time.sleep(delay); continue
-            if response.status_code >= 500 and attempt < 2:
-                time.sleep(2 ** attempt); continue
-            response.raise_for_status()
-            if not result.get("ok"): raise RuntimeError(str(result))
-            return True
-        except requests.RequestException as error:
-            last_error = error
-            if attempt < 2: time.sleep(2 ** attempt)
-    if last_error: raise last_error
-    raise TelegramRateLimitError("Telegram message delivery failed after retries.")
+        print("[DRY RUN] Telegram message was not sent:")
+        print(message[:1000])
+        return False
+
+    parts = _telegram_parts(message)
+    for part_number, part in enumerate(parts, start=1):
+        last_error = None
+        delivered = False
+        for attempt in range(3):
+            try:
+                response = requests.post(
+                    API_URL,
+                    data={"chat_id": CHANNEL_ID, "text": part, "disable_web_page_preview": True},
+                    timeout=25,
+                )
+                try:
+                    result = response.json()
+                except Exception:
+                    result = {}
+                if response.status_code == 429:
+                    retry_after = result.get("parameters", {}).get("retry_after", 30)
+                    try:
+                        delay = max(1, min(int(retry_after), 300))
+                    except (TypeError, ValueError):
+                        delay = 2 ** attempt
+                    if attempt == 2:
+                        raise TelegramRateLimitError(f"Telegram 429 after retries; retry_after={retry_after}")
+                    time.sleep(delay)
+                    continue
+                if response.status_code >= 500 and attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+                response.raise_for_status()
+                if not result.get("ok"):
+                    raise RuntimeError(str(result))
+                delivered = True
+                break
+            except requests.RequestException as error:
+                last_error = error
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+        if not delivered:
+            if last_error:
+                raise last_error
+            raise TelegramRateLimitError(f"Telegram delivery failed for part {part_number}.")
+        if part_number < len(parts):
+            time.sleep(0.4)
+    return True
+
 
 def make_message(source, entry):
     title = clean_text(entry.get("title", "بدون عنوان"))
@@ -250,24 +385,24 @@ def make_message(source, entry):
     relevance = analyse_news(title, raw_summary)
     breaking = is_breaking_news(title, raw_summary)
     breaking_assessment = score_breaking_news(title, raw_summary, source=source)
-    summary = raw_summary
-    if summary.lower().strip() == title.lower().strip(): summary = ""
-    summary = summary[:600]
     symbols = detect_symbols(title, raw_summary)
     importance = detect_importance(title, raw_summary)
     market_analysis = analyze_market_news(title, raw_summary)
     cross_impact = analyze_cross_market_impact(title, raw_summary)
     affected_symbols = ", ".join(dict.fromkeys(market_analysis["symbols"] + cross_impact["symbols"]))
+
+    article_text, full_article = fetch_article_text(link, raw_summary)
     persian_title = translate_to_persian(title)
     time.sleep(TRANSLATION_DELAY)
-    persian_summary = translate_to_persian(summary) if summary else "منبع خبری خلاصه تکمیلی ارائه نکرده است."
-    english_summary = summary if summary else "No additional summary provided by source."
+    persian_article = translate_to_persian(article_text) if article_text else "متن خبر از منبع قابل دریافت نبود."
+    article_status = "متن گزارش از وب‌سایت منبع دریافت شد." if full_article else "⚠️ متن کامل از وب‌سایت دریافت نشد؛ متن RSS ترجمه شده است و ممکن است کامل نباشد."
+
     return (
         "کانال خبری گلد نیوز | Gold News Channel\n"
-        f"{'🚨 خبر فوری\n' if breaking else '🟡 گزارش خبری\n'}\n"
+        f"{'🚨 خبر فوری' if breaking else '🟡 گزارش خبری'}\n\n"
+        f"📰 عنوان خبر: {persian_title}\n"
         f"نماد خبر: {symbols}\n"
         f"🚨 درجه فوریت: {format_breaking_badge(breaking_assessment)}\n"
-        f"📰 عنوان: {persian_title}\n"
         f"اهمیت خبر: {importance}\n"
         f"ارتباط با طلا: {relevance['label']} ({relevance['score']}/100)\n"
         f"📌 نمادهای مرتبط: {affected_symbols}\n"
@@ -282,13 +417,9 @@ def make_message(source, entry):
         f"🏛 منبع: {source} ({source_status(source)})\n"
         f"🕒 زمان انتشار منبع: {published}\n"
         f"🕒 زمان کابل: {kabul_published}\n\n"
-        "🇬🇧 ENGLISH SUMMARY:\n"
-        f"{english_summary}\n\n"
-        "🇮🇷 خلاصه فارسی:\n"
-        f"{persian_summary}\n\n"
-        "🔗 لینک گزارش اصلی:\n"
-        f"{link}"
-    )[:4000]
+        f"🇮🇷 ترجمه فارسی متن خبر:\n{article_status}\n\n{persian_article}\n\n"
+        f"🔗 لینک گزارش اصلی:\n{link}"
+    )
 
 def main():
     seen = load_seen()
