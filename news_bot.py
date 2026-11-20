@@ -30,8 +30,8 @@ STATE_FILE = BASE_DIR / "seen_news.json"
 API_URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
 
 # حداکثر سه خبر در هر اجرای ۱۵ دقیقه‌ای
-MAX_NEWS_PER_RUN = 2 if os.getenv("BREAKING_ONLY", "false").lower() == "true" else 3
-MAX_AGE_HOURS = 36
+MAX_NEWS_PER_RUN = min(10, max(1, int(os.getenv("NEWS_MAX_PER_RUN", "2" if os.getenv("BREAKING_ONLY", "false").lower() == "true" else "3"))))
+MAX_AGE_HOURS = min(168, max(1, int(os.getenv("NEWS_MAX_AGE_HOURS", "36"))))
 BREAKING_ONLY = os.getenv("BREAKING_ONLY", "false").lower() == "true"
 BREAKING_TERMS = (
     "breaking", "just in", "emergency meeting", "emergency rate", "unexpected rate",
@@ -106,9 +106,27 @@ def save_seen(seen):
     temp_file.replace(STATE_FILE)
 
 def get_entries(url):
-    response = requests.get(url, headers={"User-Agent": "GoldNewsBot/2.0"}, timeout=25)
-    response.raise_for_status()
-    return feedparser.parse(response.content).entries
+    """Fetch RSS/Atom with bounded retries for transient failures."""
+    last_error = None
+    for attempt in range(3):
+        try:
+            response = requests.get(url, headers={"User-Agent": "GoldNewsBot/2.0"}, timeout=25)
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After", "")
+                try: delay = max(1, min(int(retry_after), 60))
+                except (TypeError, ValueError): delay = 2 ** attempt
+                if attempt == 2: response.raise_for_status()
+                time.sleep(delay)
+                continue
+            if response.status_code >= 500 and attempt < 2:
+                time.sleep(2 ** attempt); continue
+            response.raise_for_status()
+            return feedparser.parse(response.content).entries
+        except requests.RequestException as error:
+            last_error = error
+            if attempt < 2: time.sleep(2 ** attempt)
+    if last_error: raise last_error
+    raise RuntimeError(f"Feed fetch failed after retries: {url}")
 
 def entry_id(entry):
     return str(entry.get("id") or entry.get("link") or entry.get("title", "")).strip()
@@ -192,24 +210,30 @@ def translate_to_persian(text):
 
 def send_telegram(message):
     if os.getenv("DRY_RUN", "false").lower() == "true":
-        print("[DRY RUN] Telegram message was not sent:")
-        print(message[:1000])
-        return False
+        print("[DRY RUN] Telegram message was not sent:"); print(message[:1000]); return False
+    last_error = None
     for attempt in range(3):
-        response = requests.post(API_URL, data={"chat_id": CHANNEL_ID, "text": message, "disable_web_page_preview": True}, timeout=25)
-        try: result = response.json()
-        except Exception: result = {}
-        if response.status_code == 429:
-            retry_after = result.get("parameters", {}).get("retry_after", 30)
-            print(f"Telegram rate limit. Waiting {retry_after + 1}s.")
-            if attempt == 2:
-                raise TelegramRateLimitError(f"Telegram 429 after retries; retry_after={retry_after}")
-            time.sleep(min(int(retry_after) + 1, 120))
-            continue
-        response.raise_for_status()
-        if not result.get("ok"): raise RuntimeError(str(result))
-        return True
-    raise TelegramRateLimitError("Telegram rate limit; message not sent.")
+        try:
+            response = requests.post(API_URL, data={"chat_id": CHANNEL_ID, "text": message, "disable_web_page_preview": True}, timeout=25)
+            try: result = response.json()
+            except Exception: result = {}
+            if response.status_code == 429:
+                retry_after = result.get("parameters", {}).get("retry_after", 30)
+                try: delay = max(1, min(int(retry_after), 300))
+                except (TypeError, ValueError): delay = 2 ** attempt
+                print(f"Telegram rate limit. Waiting {delay}s.")
+                if attempt == 2: raise TelegramRateLimitError(f"Telegram 429 after retries; retry_after={retry_after}")
+                time.sleep(delay); continue
+            if response.status_code >= 500 and attempt < 2:
+                time.sleep(2 ** attempt); continue
+            response.raise_for_status()
+            if not result.get("ok"): raise RuntimeError(str(result))
+            return True
+        except requests.RequestException as error:
+            last_error = error
+            if attempt < 2: time.sleep(2 ** attempt)
+    if last_error: raise last_error
+    raise TelegramRateLimitError("Telegram message delivery failed after retries.")
 
 def make_message(source, entry):
     title = clean_text(entry.get("title", "بدون عنوان"))
