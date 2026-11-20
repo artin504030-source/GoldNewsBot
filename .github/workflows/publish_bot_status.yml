@@ -1,0 +1,112 @@
+name: Publish Bot Runtime Status
+
+on:
+  workflow_run:
+    workflows:
+      - Gold News Bot
+      - Gold News Breaking Monitor
+      - Gold News Daily Digest
+    types: [completed]
+    branches: [main]
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: publish-bot-runtime-status
+  cancel-in-progress: false
+
+jobs:
+  publish-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check dashboard publishing token
+        id: dashboard-token
+        env:
+          DASHBOARD_REPO_TOKEN: ${{ secrets.DASHBOARD_REPO_TOKEN }}
+        run: |
+          if [ -n "$DASHBOARD_REPO_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "DASHBOARD_REPO_TOKEN is missing; runtime status cannot be published."
+          fi
+
+      - name: Checkout dashboard repository
+        if: steps.dashboard-token.outputs.enabled == 'true'
+        uses: actions/checkout@v5
+        with:
+          repository: artin504030-source/GoldNewsDashboard
+          ref: main
+          path: dashboard-site
+          token: ${{ secrets.DASHBOARD_REPO_TOKEN }}
+
+      - name: Update workflow run status
+        if: steps.dashboard-token.outputs.enabled == 'true'
+        env:
+          WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          EVENT_NAME: ${{ github.event.workflow_run.event }}
+          BRANCH_NAME: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HTML_URL: ${{ github.event.workflow_run.html_url }}
+          CREATED_AT: ${{ github.event.workflow_run.created_at }}
+          UPDATED_AT: ${{ github.event.workflow_run.updated_at }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from datetime import datetime, timezone
+          path = Path('dashboard-site/bot_status.json')
+          try:
+              data = json.loads(path.read_text(encoding='utf-8'))
+          except (FileNotFoundError, json.JSONDecodeError):
+              data = {'workflows': {}}
+          data.setdefault('workflows', {})
+          name = os.environ['WORKFLOW_NAME']
+          run = {
+              'run_id': int(os.environ['RUN_ID']),
+              'run_number': int(os.environ['RUN_NUMBER']),
+              'run_attempt': int(os.environ['RUN_ATTEMPT']),
+              'conclusion': os.environ.get('CONCLUSION') or 'unknown',
+              'event': os.environ.get('EVENT_NAME'),
+              'branch': os.environ.get('BRANCH_NAME'),
+              'head_sha': os.environ.get('HEAD_SHA'),
+              'html_url': os.environ.get('HTML_URL'),
+              'created_at_utc': os.environ.get('CREATED_AT'),
+              'updated_at_utc': os.environ.get('UPDATED_AT'),
+          }
+          previous = data['workflows'].get(name, {})
+          old = previous.get('last_run') or {}
+          if not old.get('updated_at_utc') or (run['updated_at_utc'] or '') >= (old.get('updated_at_utc') or ''):
+              previous['last_run'] = run
+          if run['conclusion'] == 'success':
+              old_success = previous.get('last_success') or {}
+              if not old_success.get('updated_at_utc') or (run['updated_at_utc'] or '') >= (old_success.get('updated_at_utc') or ''):
+                  previous['last_success'] = run
+          data['workflows'][name] = previous
+          data['updated_at_utc'] = datetime.now(timezone.utc).isoformat()
+          path.parent.mkdir(parents=True, exist_ok=True)
+          tmp = path.with_suffix('.json.tmp')
+          tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          tmp.replace(path)
+          print(f"Updated runtime status for {name}: {run['conclusion']}")
+          PY
+
+      - name: Commit and publish runtime status
+        if: steps.dashboard-token.outputs.enabled == 'true'
+        run: |
+          cd dashboard-site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bot_status.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update bot runtime status"
+            git push origin HEAD:main
+          else
+            echo "Runtime status is unchanged."
+          fi
