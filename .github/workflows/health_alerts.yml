@@ -23,7 +23,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: gold-news-bot-${{ github.ref }}
+  group: gold-news-health-alerts
   cancel-in-progress: false
 
 jobs:
@@ -61,7 +61,14 @@ jobs:
           git add health_alert_state.json
           if ! git diff --cached --quiet; then
             git commit -m "Update health alert state"
-            git push origin HEAD:main
+            for attempt in 1 2 3; do
+              if git push origin HEAD:main; then exit 0; fi
+              echo "Push raced with another repository update; rebasing and retrying ($attempt/3)."
+              git fetch origin "+refs/heads/main:refs/remotes/origin/main"
+              git rebase origin/main
+            done
+            echo "Could not publish health alert state after 3 attempts."
+            exit 1
           else
             echo "Alert state is unchanged."
           fi

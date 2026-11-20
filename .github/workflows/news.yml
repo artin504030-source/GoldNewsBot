@@ -64,7 +64,14 @@ jobs:
           git add seen_news.json news_archive.json source_health.json
           if ! git diff --cached --quiet; then
             git commit -m "Update processed news history"
-            git push origin HEAD:${GITHUB_REF_NAME}
+            for attempt in 1 2 3; do
+              if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+              echo "Push raced with another state update; rebasing and retrying ($attempt/3)."
+              git fetch origin "+refs/heads/${GITHUB_REF_NAME}:refs/remotes/origin/${GITHUB_REF_NAME}"
+              git rebase "origin/${GITHUB_REF_NAME}"
+            done
+            echo "Could not publish news history after 3 attempts."
+            exit 1
           else
             echo "No news history changes to save."
           fi
