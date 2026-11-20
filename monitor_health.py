@@ -38,6 +38,10 @@ def load_state():
 
 
 def send_telegram(text):
+    if os.getenv("DRY_RUN", "false").lower() == "true":
+        print("[DRY RUN] Telegram alert was not sent:")
+        print(text)
+        return
     if not BOT_TOKEN or not CHAT_ID:
         raise RuntimeError("BOT_TOKEN or CHANNEL_ID/ALERT_CHAT_ID is missing")
     response = requests.post(

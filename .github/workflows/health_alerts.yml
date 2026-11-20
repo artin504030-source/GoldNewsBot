@@ -4,6 +4,19 @@ on:
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run health checks without sending Telegram alerts or saving alert state"
+        required: false
+        type: boolean
+        default: true
+  workflow_run:
+    workflows:
+      - Gold News Bot
+      - Gold News Breaking Monitor
+      - Gold News Daily Digest
+    types: [completed]
+    branches: [main]
 
 permissions:
   actions: read
@@ -37,10 +50,11 @@ jobs:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           ALERT_CHAT_ID: ${{ secrets.ALERT_CHAT_ID }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'workflow_dispatch') }}
         run: python monitor_health.py
 
       - name: Save alert state
-        if: always()
+        if: always() && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true) && (github.event_name != 'workflow_run' || github.event.workflow_run.event != 'workflow_dispatch')
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
