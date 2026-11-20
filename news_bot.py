@@ -7,6 +7,7 @@ import requests
 import feedparser
 
 from gold_news_features import analyse_news, kabul_time, load_archive, is_duplicate, archive_news, source_status, record_source_confirmation
+from market_analysis import analyze_market_news
 
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -21,6 +22,7 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 
 if not TOKEN or not CHANNEL_ID:
     raise SystemExit("تنظیمات تلگرام پیدا نشد.")
+
 
 STATE_FILE = BASE_DIR / "seen_news.json"
 API_URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
@@ -38,6 +40,7 @@ BREAKING_TERMS = (
     "explosion", "attack on", "central bank intervention"
 )
 TRANSLATION_DELAY = 1.0
+
 
 FEEDS = {
     "Federal Reserve": "https://www.federalreserve.gov/feeds/press_all.xml",
@@ -60,76 +63,20 @@ BREAKING_FEEDS = {
     if name in {"Federal Reserve", "BLS", "BEA", "European Central Bank", "Bank of England", "Bank of Japan", "Geopolitical News", "Economic Reports"}
 }
 
-# واژه‌هایی که معمولاً نشان‌دهنده خبر ورزشی، فروشگاهی یا نامرتبط‌اند
 EXCLUDE_TERMS = [
-    "gold medal", "gold medals", "wins gold", "won gold",
-    "athlete", "championship", "tournament", "swimmer",
-    "football", "soccer", "basketball", "olympic", "sports",
-    "retailers that sell gold", "jewelry", "jewellery",
-    "vending machine", "gold shop", "gold store"
+    "gold medal", "gold medals", "wins gold", "won gold", "athlete", "championship",
+    "tournament", "swimmer", "football", "soccer", "basketball", "olympic", "sports",
+    "retailers that sell gold", "jewelry", "jewellery", "vending machine", "gold shop", "gold store"
 ]
-
-# حداقل یک موضوع مشخص اقتصادی/مالی باید وجود داشته باشد.
 RELEVANCE_GROUPS = [
-    [
-        "gold price", "gold market", "gold futures", "gold bullion",
-        "bullion market", "gold etf", "gold demand", "gold reserves",
-        "central bank gold", "gold holdings", "precious metals",
-        "precious metal prices", "gold investment", "gold trading",
-        "gold drops", "gold rises", "gold tumbles", "gold rally"
-    ],
-    [
-        "federal reserve", "fomc", "fed rate", "fed funds",
-        "us cpi", "u.s. cpi", "core cpi", "pce inflation",
-        "nonfarm payroll", "non-farm payroll", "treasury yield",
-        "us dollar", "u.s. dollar", "dollar index", "dxy",
-        "us inflation", "u.s. inflation", "us economy",
-        "u.s. economy", "interest rate decision"
-    ],
-    [
-        "european central bank", "ecb", "eurozone inflation",
-        "euro area inflation", "bank of england", "boe rate",
-        "bank of japan", "boj", "japanese yen",
-        "gdp growth", "inflation report", "retail sales report",
-        "unemployment rate", "employment report", "pmi report",
-        "bond yields", "treasury yields", "forex market",
-        "foreign exchange market", "currency markets"
-    ],
-    [
-        "iran sanctions", "iran israel", "middle east conflict",
-        "military strike", "airstrike", "ceasefire",
-        "russia ukraine", "trade war", "tariffs",
-        "oil prices", "crude oil", "opec",
-        "china economy", "global financial markets",
-        "banking crisis", "financial crisis"
-    ]
+    ["gold price", "gold market", "gold futures", "gold bullion", "bullion market", "gold etf", "gold demand", "gold reserves", "central bank gold", "gold holdings", "precious metals", "precious metal prices", "gold investment", "gold trading", "gold drops", "gold rises", "gold tumbles", "gold rally"],
+    ["federal reserve", "fomc", "fed rate", "fed funds", "us cpi", "u.s. cpi", "core cpi", "pce inflation", "nonfarm payroll", "non-farm payroll", "treasury yield", "us dollar", "u.s. dollar", "dollar index", "dxy", "us inflation", "u.s. inflation", "us economy", "u.s. economy", "interest rate decision"],
+    ["european central bank", "ecb", "eurozone inflation", "euro area inflation", "bank of england", "boe rate", "bank of japan", "boj", "japanese yen", "gdp growth", "inflation report", "retail sales report", "unemployment rate", "employment report", "pmi report", "bond yields", "treasury yields", "forex market", "foreign exchange market", "currency markets"],
+    ["iran sanctions", "iran israel", "middle east conflict", "military strike", "airstrike", "ceasefire", "russia ukraine", "trade war", "tariffs", "oil prices", "crude oil", "opec", "china economy", "global financial markets", "banking crisis", "financial crisis"]
 ]
-
-HIGH_IMPORTANCE = [
-    "fomc rate decision", "fed rate decision", "interest rate decision",
-    "rate decision", "cpi report", "core cpi", "nonfarm payroll",
-    "non-farm payroll", "nfp report", "pce inflation",
-    "central bank gold reserves", "central bank cuts rates",
-    "central bank raises rates", "emergency rate",
-    "military strike", "invasion", "major escalation",
-    "ceasefire agreement", "banking crisis", "financial crisis"
-]
-
-MEDIUM_IMPORTANCE = [
-    "inflation", "interest rate", "monetary policy", "gdp",
-    "unemployment", "employment", "retail sales",
-    "treasury yields", "bond yields", "sanctions",
-    "trade war", "tariffs", "economic growth",
-    "central bank", "gold demand", "gold reserves",
-    "oil prices", "forex", "currency"
-]
-
-LOW_IMPORTANCE = [
-    "research", "researchers", "study", "scientists",
-    "analysis", "opinion", "interview", "company",
-    "mining project", "exploration"
-]
-
+HIGH_IMPORTANCE = ["fomc rate decision", "fed rate decision", "interest rate decision", "rate decision", "cpi report", "core cpi", "nonfarm payroll", "non-farm payroll", "nfp report", "pce inflation", "central bank gold reserves", "central bank cuts rates", "central bank raises rates", "emergency rate", "military strike", "invasion", "major escalation", "ceasefire agreement", "banking crisis", "financial crisis"]
+MEDIUM_IMPORTANCE = ["inflation", "interest rate", "monetary policy", "gdp", "unemployment", "employment", "retail sales", "treasury yields", "bond yields", "sanctions", "trade war", "tariffs", "economic growth", "central bank", "gold demand", "gold reserves", "oil prices", "forex", "currency"]
+LOW_IMPORTANCE = ["research", "researchers", "study", "scientists", "analysis", "opinion", "interview", "company", "mining project", "exploration"]
 
 class TelegramRateLimitError(RuntimeError):
     pass
@@ -151,29 +98,18 @@ def load_seen():
         print("Cannot read seen_news.json:", error)
         return set()
 
-
 def save_seen(seen):
     temp_file = STATE_FILE.with_suffix(".tmp")
-    temp_file.write_text(
-        json.dumps(sorted(seen), ensure_ascii=False),
-        encoding="utf-8"
-    )
+    temp_file.write_text(json.dumps(sorted(seen), ensure_ascii=False), encoding="utf-8")
     temp_file.replace(STATE_FILE)
 
-
 def get_entries(url):
-    response = requests.get(
-        url,
-        headers={"User-Agent": "GoldNewsBot/2.0"},
-        timeout=25
-    )
+    response = requests.get(url, headers={"User-Agent": "GoldNewsBot/2.0"}, timeout=25)
     response.raise_for_status()
     return feedparser.parse(response.content).entries
 
-
 def entry_id(entry):
     return str(entry.get("id") or entry.get("link") or entry.get("title", "")).strip()
-
 
 def entry_datetime(entry):
     for field in ("published", "updated", "created"):
@@ -186,182 +122,92 @@ def entry_datetime(entry):
                 return dt.astimezone(timezone.utc)
             except Exception:
                 pass
-
     parsed = entry.get("published_parsed") or entry.get("updated_parsed")
     if parsed:
         try:
             return datetime(*parsed[:6], tzinfo=timezone.utc)
         except Exception:
             pass
-
     return None
-
 
 def is_recent(entry):
     published = entry_datetime(entry)
     if published is None:
-        # اگر تاریخ قابل خواندن نباشد، برای جلوگیری از ارسال خبر قدیمی رد می‌شود.
         return False
-
     now = datetime.now(timezone.utc)
     age = now - published
     return timedelta(minutes=-10) <= age <= timedelta(hours=MAX_AGE_HOURS)
-
 
 def is_breaking_news(title, summary=""):
     text = clean_text(title + " " + summary).lower()
     return any(term in text for term in BREAKING_TERMS)
 
-
 def is_relevant(title, summary):
     text = clean_text(title + " " + summary).lower()
-
     if any(term in text for term in EXCLUDE_TERMS):
         return False
-
-    return any(
-        term in text
-        for group in RELEVANCE_GROUPS
-        for term in group
-    )
-
+    return any(term in text for group in RELEVANCE_GROUPS for term in group)
 
 def detect_symbols(title, summary):
     text = clean_text(title + " " + summary).lower()
     symbols = []
-
-    gold_context = any(term in text for term in [
-        "gold price", "gold market", "gold futures", "gold bullion",
-        "bullion market", "gold etf", "gold demand", "gold reserves",
-        "central bank gold", "gold holdings", "gold trading",
-        "gold rises", "gold drops", "gold tumbles", "gold rally",
-        "precious metals"
-    ])
-
+    gold_context = any(term in text for term in ["gold price", "gold market", "gold futures", "gold bullion", "bullion market", "gold etf", "gold demand", "gold reserves", "central bank gold", "gold holdings", "gold trading", "gold rises", "gold drops", "gold tumbles", "gold rally", "precious metals"])
     if gold_context:
         symbols.append("XAUUSD")
-
-    us_terms = [
-        "federal reserve", "fomc", "fed rate", "fed funds",
-        "us cpi", "u.s. cpi", "core cpi", "pce inflation",
-        "nonfarm payroll", "non-farm payroll", "treasury yield",
-        "us dollar", "u.s. dollar", "dollar index", "dxy",
-        "us inflation", "u.s. inflation", "united states"
-    ]
+    us_terms = ["federal reserve", "fomc", "fed rate", "fed funds", "us cpi", "u.s. cpi", "core cpi", "pce inflation", "nonfarm payroll", "non-farm payroll", "treasury yield", "us dollar", "u.s. dollar", "dollar index", "dxy", "us inflation", "u.s. inflation", "united states"]
     if any(term in text for term in us_terms):
         symbols.append("USD")
         if "XAUUSD" not in symbols:
             symbols.append("XAUUSD (ارتباط غیرمستقیم)")
-
-    euro_terms = [
-        "european central bank", "ecb", "eurozone",
-        "euro area", "euro"
-    ]
-    if any(term in text for term in euro_terms):
-        symbols.append("EURUSD")
-
-    uk_terms = [
-        "bank of england", "boe", "british pound",
-        "sterling", "united kingdom"
-    ]
-    if any(term in text for term in uk_terms):
-        symbols.append("GBPUSD")
-
-    japan_terms = [
-        "bank of japan", "boj", "japanese yen",
-        "japan inflation"
-    ]
-    if any(term in text for term in japan_terms):
-        symbols.append("USDJPY")
-
+    euro_terms = ["european central bank", "ecb", "eurozone", "euro area", "euro"]
+    if any(term in text for term in euro_terms): symbols.append("EURUSD")
+    uk_terms = ["bank of england", "boe", "british pound", "sterling", "united kingdom"]
+    if any(term in text for term in uk_terms): symbols.append("GBPUSD")
+    japan_terms = ["bank of japan", "boj", "japanese yen", "japan inflation"]
+    if any(term in text for term in japan_terms): symbols.append("USDJPY")
     symbols = list(dict.fromkeys(symbols))
     return "، ".join(symbols) if symbols else "نماد مرتبط مشخص نیست"
 
-
 def detect_importance(title, summary):
     text = clean_text(title + " " + summary).lower()
-
-    if any(term in text for term in HIGH_IMPORTANCE):
-        return "زیاد"
-
-    if any(term in text for term in LOW_IMPORTANCE):
-        return "کم"
-
-    if any(term in text for term in MEDIUM_IMPORTANCE):
-        return "متوسط"
-
+    if any(term in text for term in HIGH_IMPORTANCE): return "زیاد"
+    if any(term in text for term in LOW_IMPORTANCE): return "کم"
+    if any(term in text for term in MEDIUM_IMPORTANCE): return "متوسط"
     return "کم"
 
-
 def translate_to_persian(text):
-    if not text:
-        return ""
-
+    if not text: return ""
     try:
-        response = requests.get(
-            "https://api.mymemory.translated.net/get",
-            params={"q": text[:4500], "langpair": "en|fa"},
-            timeout=20
-        )
+        response = requests.get("https://api.mymemory.translated.net/get", params={"q": text[:4500], "langpair": "en|fa"}, timeout=20)
         response.raise_for_status()
         data = response.json()
-
         if data.get("responseStatus") == 200:
-            return html.unescape(
-                data["responseData"]["translatedText"]
-            )
-
+            return html.unescape(data["responseData"]["translatedText"])
         print("Translation service:", data.get("responseDetails"))
-
     except Exception as error:
         print("Translation error:", error)
-
     return "ترجمه فارسی فعلاً در دسترس نیست."
-
 
 def send_telegram(message):
     if os.getenv("DRY_RUN", "false").lower() == "true":
         print("[DRY RUN] Telegram message was not sent:")
         print(message[:1000])
         return False
-
     for attempt in range(3):
-        response = requests.post(
-            API_URL,
-            data={
-                "chat_id": CHANNEL_ID,
-                "text": message,
-                "disable_web_page_preview": True
-            },
-            timeout=25
-        )
-
-        try:
-            result = response.json()
-        except Exception:
-            result = {}
-
+        response = requests.post(API_URL, data={"chat_id": CHANNEL_ID, "text": message, "disable_web_page_preview": True}, timeout=25)
+        try: result = response.json()
+        except Exception: result = {}
         if response.status_code == 429:
-            retry_after = (
-                result.get("parameters", {}).get("retry_after", 30)
-            )
+            retry_after = result.get("parameters", {}).get("retry_after", 30)
             print(f"Telegram rate limit. Waiting {retry_after + 1}s.")
             if attempt == 2:
-                raise TelegramRateLimitError(
-                    f"Telegram 429 after retries; retry_after={retry_after}"
-                )
+                raise TelegramRateLimitError(f"Telegram 429 after retries; retry_after={retry_after}")
             time.sleep(min(int(retry_after) + 1, 120))
             continue
-
         response.raise_for_status()
-
-        if not result.get("ok"):
-            raise RuntimeError(str(result))
-
+        if not result.get("ok"): raise RuntimeError(str(result))
         return True
-
     raise TelegramRateLimitError("Telegram rate limit; message not sent.")
-
 
 def make_message(source, entry):
     title = clean_text(entry.get("title", "بدون عنوان"))
@@ -372,30 +218,17 @@ def make_message(source, entry):
     kabul_published = kabul_time(published_dt) if published_dt else "زمان نامشخص"
     relevance = analyse_news(title, raw_summary)
     breaking = is_breaking_news(title, raw_summary)
-
-    # خلاصه تکراری عنوان را به‌عنوان خلاصه مستقل نمایش نمی‌دهیم.
     summary = raw_summary
-    if summary.lower().strip() == title.lower().strip():
-        summary = ""
-
+    if summary.lower().strip() == title.lower().strip(): summary = ""
     summary = summary[:600]
-
     symbols = detect_symbols(title, raw_summary)
     importance = detect_importance(title, raw_summary)
-
+    market_analysis = analyze_market_news(title, raw_summary)
+    affected_symbols = ", ".join(market_analysis["symbols"])
     persian_title = translate_to_persian(title)
     time.sleep(TRANSLATION_DELAY)
-
-    if summary:
-        persian_summary = translate_to_persian(summary)
-    else:
-        persian_summary = "منبع خبری خلاصه تکمیلی ارائه نکرده است."
-
-    english_summary = (
-        summary if summary else
-        "No additional summary provided by source."
-    )
-
+    persian_summary = translate_to_persian(summary) if summary else "منبع خبری خلاصه تکمیلی ارائه نکرده است."
+    english_summary = summary if summary else "No additional summary provided by source."
     return (
         "کانال خبری گلد نیوز | Gold News Channel\n"
         f"{'🚨 خبر فوری\n' if breaking else '🟡 گزارش خبری\n'}\n"
@@ -403,6 +236,10 @@ def make_message(source, entry):
         f"📰 عنوان: {persian_title}\n"
         f"اهمیت خبر: {importance}\n"
         f"ارتباط با طلا: {relevance['label']} ({relevance['score']}/100)\n"
+        f"📌 نمادهای مرتبط: {affected_symbols}\n"
+        f"🔎 لحن خبر: {market_analysis['potential_effect']}\n"
+        f"🎚 اطمینان: {market_analysis['confidence']}\n"
+        f"🧠 توضیح: {market_analysis['reason']}\n"
         f"دسته‌بندی: {relevance['category']}\n"
         f"🏛 منبع: {source} ({source_status(source)})\n"
         f"🕒 زمان انتشار منبع: {published}\n"
@@ -415,7 +252,6 @@ def make_message(source, entry):
         f"{link}"
     )[:4000]
 
-
 def main():
     seen = load_seen()
     initialized = STATE_FILE.exists()
@@ -423,109 +259,65 @@ def main():
     preview_count = 0
     archive = load_archive()
     stop_sending = False
-
     print("Gold News Bot started.")
     print("Loaded seen items:", len(seen))
     print("Maximum news per run:", MAX_NEWS_PER_RUN)
     print("Maximum news age (hours):", MAX_AGE_HOURS)
     print("Breaking-only mode:", BREAKING_ONLY)
     feeds_to_check = BREAKING_FEEDS if BREAKING_ONLY else FEEDS
-
     for source, url in feeds_to_check.items():
-        if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN:
-            break
-
+        if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN: break
         try:
             entries = get_entries(url)
-
             for entry in reversed(entries):
-                if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN:
-                    break
-
+                if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN: break
                 uid = source + ":" + entry_id(entry)
-                if not uid.strip() or uid in seen:
-                    continue
-
+                if not uid.strip() or uid in seen: continue
                 title = clean_text(entry.get("title", ""))
                 summary = clean_text(entry.get("summary", ""))
-
-                # اجرای اول فقط تاریخچه می‌سازد و خبرهای موجود را ارسال نمی‌کند.
                 if not initialized:
-                    seen.add(uid)
-                    save_seen(seen)
-                    continue
-
-                # خبرهای قدیمی یا بدون تاریخ معتبر ثبت می‌شوند، اما ارسال نمی‌شوند.
+                    seen.add(uid); save_seen(seen); continue
                 if not is_recent(entry):
-                    seen.add(uid)
-                    save_seen(seen)
-                    print("Skipped old/undated news:", title)
-                    continue
-
+                    seen.add(uid); save_seen(seen)
+                    print("Skipped old/undated news:", title); continue
                 if not is_relevant(title, summary):
-                    seen.add(uid)
-                    save_seen(seen)
-                    print("Filtered irrelevant news:", title)
-                    continue
-
-                if BREAKING_ONLY and not is_breaking_news(title, summary):
-                    # این خبر را در اسکن فوری علامت‌گذاری نمی‌کنیم؛ اسکن عادی باید بتواند آن را بررسی کند.
-                    continue
-
+                    seen.add(uid); save_seen(seen)
+                    print("Filtered irrelevant news:", title); continue
+                if BREAKING_ONLY and not is_breaking_news(title, summary): continue
                 if is_duplicate(title, entry.get("link", ""), archive):
                     confirmations = record_source_confirmation(source, title, entry.get("link", ""))
                     print(f"Duplicate confirmed by another source; total sources={confirmations}:", title)
-                    archive = load_archive()
-                    seen.add(uid)
-                    save_seen(seen)
-                    print("Skipped cross-feed duplicate:", title)
-                    continue
-
+                    archive = load_archive(); seen.add(uid); save_seen(seen)
+                    print("Skipped cross-feed duplicate:", title); continue
                 symbols = detect_symbols(title, summary)
                 importance = detect_importance(title, summary)
-                print(
-                    f"Candidate | importance={importance} | "
-                    f"symbols={symbols} | title={title}"
-                )
-
+                print(f"Candidate | importance={importance} | symbols={symbols} | title={title}")
                 message = make_message(source, entry)
-
                 try:
                     sent = send_telegram(message)
                     if not sent:
                         preview_count += 1
                         print("Dry-run candidate checked:", preview_count)
-                        if preview_count >= MAX_NEWS_PER_RUN:
-                            break
+                        if preview_count >= MAX_NEWS_PER_RUN: break
                         continue
                 except TelegramRateLimitError as error:
                     print("Stopping sends due to Telegram limit:", error)
-                    stop_sending = True
-                    break
-
-                # فقط پس از تأیید موفق تلگرام خبر در سوابق ثبت می‌شود.
-                seen.add(uid)
-                save_seen(seen)
+                    stop_sending = True; break
+                seen.add(uid); save_seen(seen)
                 published_dt = entry_datetime(entry)
                 archive_news(source, title, summary, entry.get("link", ""), published_dt.isoformat() if published_dt else "", importance)
-                archive = load_archive()
-                sent_count += 1
+                archive = load_archive(); sent_count += 1
                 print("News sent successfully:", title)
                 time.sleep(3)
-
         except Exception as error:
             print(f"Error in {source}: {error}")
-
     if not initialized:
         save_seen(seen)
         print("Initial news history saved. No old news was sent.")
-
     print("News sent in this run:", sent_count)
-    if preview_count:
-        print("Dry-run candidates previewed:", preview_count)
+    if preview_count: print("Dry-run candidates previewed:", preview_count)
     print("Seen items saved:", len(seen))
     print("News check completed.")
-
 
 if __name__ == "__main__":
     main()
