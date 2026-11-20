@@ -1,0 +1,32 @@
+name: Telegram News Commands
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: gold-news-bot-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  poll-commands:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Process Telegram commands
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+        run: python telegram_news_commands.py
+      - name: Save update offset
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add telegram_update_offset.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Persist Telegram command polling offset"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
