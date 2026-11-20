@@ -24,7 +24,7 @@ def check_runs(runs, now=None, max_age_minutes=40):
  else:
   try: age=(now-datetime.fromisoformat(successes[0]["updated_at"].replace("Z","+00:00"))).total_seconds()/60
   except Exception: age=max_age_minutes+1
-  if age>max_age_minutes: issues.append(f"Last successful run is stale ({int(age)} minutes; threshold {max_age_minutes})")
+  if age>max_age_minutes: issues.append(f"Last successful run is stale (threshold {max_age_minutes} minutes)")
  return issues
 def collect_health(api=api_get,rules=RULES):
  report=[]
