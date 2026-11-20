@@ -23,7 +23,7 @@ def load_archive(path=ARCHIVE):
         rows=json.loads(Path(path).read_text(encoding='utf-8'))
         return rows if isinstance(rows,list) else []
     except (OSError,ValueError): return []
-def format_period_news(period,items,now=None,limit=10):
+def format_period_news(period,items,now=None,limit=8):
     if period not in PERIODS: return 'دستور نامعتبر است. /help را ببینید.'
     label,days=PERIODS[period]; now=now or datetime.now(timezone.utc)
     if now.tzinfo is None: now=now.replace(tzinfo=timezone.utc)
