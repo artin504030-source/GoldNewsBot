@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from gold_news_features import load_archive, fetch_calendar_events, kabul_time
 from market_digest import build_multi_market_digest
 from news_history import summarize_history, format_history_summary
+from source_health import summarize_source_health, format_source_health
 
 BASE = Path(__file__).resolve().parent
 load_dotenv(BASE / ".env")
@@ -59,7 +60,9 @@ def build_digest(now):
     multi = build_multi_market_digest(recent, events, kabul_time(now))
     history = summarize_history(load_archive(), now, days=7)
     history_text = format_history_summary(history)
-    message = multi["message"] + "\n\n" + history_text
+    source_health = summarize_source_health()
+    source_health_text = format_source_health(source_health)
+    message = multi["message"] + "\n\n" + history_text + "\n\n" + source_health_text
     report = {
         "generated_at_utc": now.isoformat(),
         "generated_at_kabul": kabul_time(now),
@@ -67,6 +70,8 @@ def build_digest(now):
         "message": message,
         "news": multi["news"],
         "news_history": history,
+        "source_health": source_health,
+        "source_health_text": source_health_text,
         "market_counts": multi["market_counts"],
         "calendar_events": multi["calendar_events"],
         "calendar_source": "Forex Factory public weekly XML feed",

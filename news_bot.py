@@ -9,6 +9,7 @@ import feedparser
 from gold_news_features import analyse_news, kabul_time, load_archive, is_duplicate, archive_news, source_status, record_source_confirmation
 from market_analysis import analyze_market_news
 from breaking_news_analysis import score_breaking_news, format_breaking_badge
+from source_health import record_source_check
 
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -272,6 +273,8 @@ def main():
         if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN: break
         try:
             entries = get_entries(url)
+            record_source_check(source, True, len(entries), mode="breaking" if BREAKING_ONLY else "regular")
+            print(f"Source OK | {source} | entries={len(entries)}")
             for entry in reversed(entries):
                 if stop_sending or sent_count + preview_count >= MAX_NEWS_PER_RUN: break
                 uid = source + ":" + entry_id(entry)
@@ -314,6 +317,7 @@ def main():
                 print("News sent successfully:", title)
                 time.sleep(3)
         except Exception as error:
+            record_source_check(source, False, error=error, mode="breaking" if BREAKING_ONLY else "regular")
             print(f"Error in {source}: {error}")
     if not initialized:
         save_seen(seen)
