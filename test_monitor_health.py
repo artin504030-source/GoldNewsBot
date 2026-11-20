@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timezone, timedelta
 import importlib.util
 from pathlib import Path
@@ -15,8 +16,8 @@ class MonitorHealthTests(unittest.TestCase):
         self.state = {"active_alerts": {}}
         self.now = datetime.now(timezone.utc)
 
-    def run_record(self, run_id, conclusion="failure", minutes_ago=5):
-        return {"id": run_id, "status": "completed", "conclusion": conclusion,
+    def run_record(self, run_id, conclusion="failure", minutes_ago=5, event="workflow_dispatch", branch="main"):
+        return {"id": run_id, "event": event, "head_branch": branch, "status": "completed", "conclusion": conclusion,
                 "created_at": (self.now - timedelta(minutes=minutes_ago)).isoformat(),
                 "html_url": "https://github.com/example/run"}
 
@@ -34,6 +35,23 @@ class MonitorHealthTests(unittest.TestCase):
         monitor.get_scheduled_runs = lambda _: records
         monitor.inspect_workflows(self.state, self.now)
         self.assertFalse(any("سه اجرای زمان‌بندی‌شده پیاپی ناموفق" in m for m in self.sent))
+
+    def test_external_dispatch_runs_are_included_but_other_events_excluded(self):
+        payload = {"workflow_runs": [
+            self.run_record(3, "success", event="workflow_dispatch"),
+            self.run_record(2, "success", event="schedule"),
+            self.run_record(1, "success", event="push"),
+            self.run_record(0, "success", event="workflow_dispatch", branch="feature/test"),
+        ]}
+        class Response:
+            def raise_for_status(self):
+                pass
+            def json(self):
+                return payload
+        monitor.GITHUB_TOKEN = "test-token"
+        with patch.object(monitor.requests, "get", return_value=Response()):
+            runs = monitor.get_scheduled_runs("news.yml")
+        self.assertEqual([r["id"] for r in runs], [3, 2])
 
     def test_recent_source_failure_alerts_and_recovers(self):
         import tempfile, json

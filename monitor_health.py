@@ -86,7 +86,10 @@ def get_scheduled_runs(workflow_file):
     )
     response.raise_for_status()
     runs = response.json().get("workflow_runs", [])
-    scheduled = [run for run in runs if run.get("event") == "schedule" and run.get("head_branch") == "main"]
+    # External cron-job.org dispatches workflows via workflow_dispatch. Include
+    # those alongside native GitHub schedules so watchdogs see real automated runs.
+    automated_events = {"schedule", "workflow_dispatch"}
+    scheduled = [run for run in runs if run.get("event") in automated_events and run.get("head_branch") == "main"]
     scheduled.sort(key=lambda item: item.get("created_at") or "", reverse=True)
     return scheduled
 
