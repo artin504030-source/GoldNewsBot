@@ -2,7 +2,7 @@ name: Gold News Breaking Monitor
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "3,8,13,18,23,28,33,38,43,48,53,58 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: gold-news-bot-${{ github.ref }}
+  group: gold-news-breaking-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
