@@ -14,6 +14,7 @@ class NewsItem:
     category: str = "general"
     impact_instruments: tuple[str, ...] = ()
     translated_title: str = ""
+    body: str = ""
 
     def __post_init__(self):
         if not self.title.strip():

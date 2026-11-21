@@ -9,14 +9,13 @@ class TranslationError(RuntimeError):
 
 
 def translate_news_item(item: NewsItem, translator: NewsTranslator) -> NewsItem:
-    """Return a translated copy; never mutate the original item or invent fallback text."""
+    """Translate original title and body into Persian without mutating the source."""
+    if not item.body.strip():
+        raise TranslationError("Original news body is empty; full-text translation cannot proceed")
     title = translator.translate(item.title, target_language="fa").strip()
     if not title:
         raise TranslationError("Translator returned an empty Persian headline")
-    body = item.translated_text.strip()
-    if not body:
-        raise TranslationError("News body is empty; full-text translation cannot proceed")
-    translated_body = translator.translate(body, target_language="fa").strip()
+    translated_body = translator.translate(item.body, target_language="fa").strip()
     if not translated_body:
         raise TranslationError("Translator returned an empty Persian article body")
     return replace(item, translated_title=title, translated_text=translated_body)

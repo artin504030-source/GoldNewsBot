@@ -14,7 +14,7 @@ class FakeTranslator:
 
 class TranslationTests(unittest.TestCase):
     def make_item(self):
-        return NewsItem(title="Market headline", url="https://example.com/1", source="Wire", translated_text="Full article text")
+        return NewsItem(title="Market headline", url="https://example.com/1", source="Wire", body="Full article text")
 
     def test_translates_headline_and_full_body_separately(self):
         item = self.make_item()
@@ -24,14 +24,15 @@ class TranslationTests(unittest.TestCase):
         self.assertEqual(translated.translated_text, "ترجمه: Full article text")
         self.assertEqual(len(translator.calls), 2)
         self.assertEqual(item.translated_title, "")
-        self.assertEqual(item.translated_text, "Full article text")
+        self.assertEqual(item.translated_text, "")
+        self.assertEqual(item.body, "Full article text")
 
     def test_empty_translation_fails_closed(self):
         translator = FakeTranslator({"Market headline": "  "})
         with self.assertRaises(TranslationError):
             translate_news_item(self.make_item(), translator)
 
-    def test_empty_article_is_rejected(self):
+    def test_empty_original_article_is_rejected(self):
         item = NewsItem(title="Market headline", url="https://example.com/1", source="Wire")
         with self.assertRaises(TranslationError):
             translate_news_item(item, FakeTranslator())
