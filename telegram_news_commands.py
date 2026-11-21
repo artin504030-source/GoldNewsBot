@@ -51,7 +51,7 @@ def format_period_news(period,items,now=None,limit=8):
     selected.sort(key=lambda x:x[0],reverse=True)
     if not selected:
         return f'{label}\n\nدر بازه انتخاب‌شده خبر ثبت‌شده‌ای در آرشیو یافت نشد.'
-    range_text=f'{start.strftime('%Y-%m-%d')} تا {end.strftime('%Y-%m-%d')}' if period in CALENDAR_PERIODS else f'{PERIODS[period][1]} روز گذشته'
+    range_text=f"{start.strftime('%Y-%m-%d')} تا {end.strftime('%Y-%m-%d')}" if period in CALENDAR_PERIODS else f"{PERIODS[period][1]} روز گذشته"
     lines=[label,f'📆 بازه: {range_text} | 📊 تعداد خبر: {len(selected)}','────────────']
     for i,(dt,item) in enumerate(selected[:limit],1):
         title=html.escape(str(item.get('title') or 'بدون عنوان')); cat=html.escape(str(item.get('category') or 'خبر')); imp=html.escape(str(item.get('importance') or 'نامشخص'))

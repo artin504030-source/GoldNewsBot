@@ -1,5 +1,6 @@
 import importlib.util, unittest
-spec=importlib.util.spec_from_file_location('historymod','/mnt/files/mex/news_history.py'); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
+from pathlib import Path
+spec=importlib.util.spec_from_file_location('historymod', Path(__file__).resolve().with_name('news_history.py')); mod=importlib.util.module_from_spec(spec); spec.loader.exec_module(mod)
 from datetime import datetime, timezone, timedelta
 class NewsHistoryTests(unittest.TestCase):
  def test_topic_counts_current_and_previous(self):
