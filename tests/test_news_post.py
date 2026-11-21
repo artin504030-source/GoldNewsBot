@@ -18,7 +18,7 @@ class NewsPostTests(unittest.TestCase):
 
     def test_contains_approved_news_sections(self):
         post = format_news_post(self.make_item(), translated_title="واکنش بازارهای جهانی به تصمیم بانک مرکزی", urgency="خبر مهم", importance="زیاد", tone="فشار احتمالی بر طلا", confidence="متوسط", direct_impact="دلار آمریکا", indirect_impact="طلا و بازار سهام")
-        for expected in ("🌍 GoldNewsBot | اخبار بازار", "واکنش بازارهای جهانی به تصمیم بانک مرکزی", "📰 ترجمه خبر:", "بانک مرکزی تصمیم تازه‌ای", "📊 تحلیل تأثیر بر بازار:", "این تصمیم می‌تواند بر دلار و طلا اثر بگذارد.", "XAUUSD، DXY", "📅 تاریخ خبر: 21 November 2026 | 12:30 UTC", "https://example.com/news/1", "@silent0trader", "توصیه خرید یا فروش نیست"):
+        for expected in ("🌍 GoldNewsBot | اخبار بازار", "واکنش بازارهای جهانی به تصمیم بانک مرکزی", "📰 ترجمه خبر:", "بانک مرکزی تصمیم تازه‌ای", "📊 تحلیل تأثیر بر بازار:", "این تصمیم می‌تواند بر دلار و طلا اثر بگذارد.", "XAUUSD، DXY", "📅 تاریخ خبر: 21 November 2026 | 12:30 UTC", "https://example.com/news/1", "Gold Admin", "توصیه خرید یا فروش نیست"):
             self.assertIn(expected, post)
 
     def test_missing_optional_analysis_fields_are_safe(self):

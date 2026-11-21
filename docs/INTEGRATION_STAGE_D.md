@@ -2,7 +2,7 @@
 
 ## Added
 - Added goldnewsbot/news_post.py, a pure formatter for the approved Persian news layout.
-- The post includes a clear headline, full translated article body, market-impact analysis, affected instruments, source, English-formatted UTC publication date, source link, @silent0trader signature, and a non-advice disclaimer.
+- The post includes a clear headline, full translated article body, market-impact analysis, affected instruments, source, English-formatted UTC publication date, source link, Gold Admin signature, and a non-advice disclaimer.
 - Optional analysis fields (urgency, importance, tone, confidence, direct and indirect impact) are supported.
 - Added unit tests for the expected layout and safe fallbacks.
 

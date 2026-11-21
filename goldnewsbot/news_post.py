@@ -11,7 +11,7 @@ def _date_label(value):
     return value.astimezone(timezone.utc).strftime("%d %B %Y | %H:%M UTC")
 
 
-def format_news_post(item: NewsItem, *, translated_title="", urgency="گزارش خبری", importance="نامشخص", tone="", confidence="", direct_impact="", indirect_impact="", signature="@silent0trader"):
+def format_news_post(item: NewsItem, *, translated_title="", urgency="گزارش خبری", importance="نامشخص", tone="", confidence="", direct_impact="", indirect_impact="", signature="Gold Admin"):
     """Build the approved Persian news layout; performs no network or I/O."""
     title = (translated_title or item.translated_title or item.title).strip()
     body = (item.translated_text or "").strip()
