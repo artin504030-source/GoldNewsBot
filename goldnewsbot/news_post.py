@@ -13,7 +13,7 @@ def _date_label(value):
 
 def format_news_post(item: NewsItem, *, translated_title="", urgency="گزارش خبری", importance="نامشخص", tone="", confidence="", direct_impact="", indirect_impact="", signature="@silent0trader"):
     """Build the approved Persian news layout; performs no network or I/O."""
-    title = (translated_title or item.title).strip()
+    title = (translated_title or item.translated_title or item.title).strip()
     body = (item.translated_text or "").strip()
     analysis = (item.analysis or "").strip()
     instruments = "، ".join(item.impact_instruments) or "نماد مرتبط مشخص نیست"

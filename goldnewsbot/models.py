@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from hashlib import sha256
 
+
 @dataclass(frozen=True)
 class NewsItem:
     title: str
@@ -12,6 +13,7 @@ class NewsItem:
     analysis: str = ""
     category: str = "general"
     impact_instruments: tuple[str, ...] = ()
+    translated_title: str = ""
 
     def __post_init__(self):
         if not self.title.strip():
