@@ -17,6 +17,7 @@ def format_news_post(item: NewsItem, *, translated_title="", urgency="گزارش
     body = (item.translated_text or "").strip()
     analysis = (item.analysis or "").strip()
     instruments = "، ".join(item.impact_instruments) or "نماد مرتبط مشخص نیست"
+    category = (item.category or "عمومی").strip()
     sections = [
         "🌍 GoldNewsBot | اخبار بازار", "", f"🔴 {urgency.strip()}",
         f"📰 {title}", "", "📰 ترجمه خبر:",
@@ -33,8 +34,8 @@ def format_news_post(item: NewsItem, *, translated_title="", urgency="گزارش
         if value.strip():
             sections.append(f"{label}: {value.strip()}")
     sections.extend([
-        "", f"🏷 دسته‌بندی: {(item.category or "عمومی").strip()}",
-        f"⭐ اهمیت خبر: {importance.strip()}", f"🗞 منبع: {item.source.strip()}",
+        "", f"🏷 دسته‌بندی: {category}", f"⭐ اهمیت خبر: {importance.strip()}",
+        f"🗞 منبع: {item.source.strip()}",
         f"📅 تاریخ خبر: {_date_label(item.published_at)}",
         f"🔗 لینک منبع: {item.url.strip()}", "", signature.strip(), "",
         "⚠️ این پیام ترجمه و تحلیل خبری است و توصیه خرید یا فروش نیست.",
