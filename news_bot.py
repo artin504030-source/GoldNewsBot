@@ -423,7 +423,9 @@ def make_message(source, entry):
         f"🕒 زمان انتشار منبع: {published}\n"
         f"🕒 زمان کابل: {kabul_published}\n\n"
         f"🇮🇷 ترجمه فارسی متن خبر:\n{article_status}\n\n{persian_article}\n\n"
-        f"🔗 لینک گزارش اصلی:\n{link}"
+        f"🔗 لینک گزارش اصلی:\n{link}\n\n"
+        "Gold Admin\n"
+        "News Admin"
     )
 
 def main():
