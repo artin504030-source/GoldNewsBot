@@ -12,6 +12,7 @@ from market_analysis import analyze_market_news
 from cross_market_impact import analyze_cross_market_impact
 from breaking_news_analysis import score_breaking_news, format_breaking_badge
 from source_health import record_source_check
+from goldnewsbot.integration import fetch_and_classify_article
 
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -391,7 +392,9 @@ def make_message(source, entry):
     cross_impact = analyze_cross_market_impact(title, raw_summary)
     affected_symbols = ", ".join(dict.fromkeys(market_analysis["symbols"] + cross_impact["symbols"]))
 
-    article_text, full_article = fetch_article_text(link, raw_summary)
+    article_result = fetch_and_classify_article(link, title, raw_summary)
+    article_text = article_result["body"]
+    full_article = article_result["full_article"]
     persian_title = translate_to_persian(title)
     time.sleep(TRANSLATION_DELAY)
     persian_article = translate_to_persian(article_text) if article_text else "متن خبر از منبع قابل دریافت نبود."
@@ -410,6 +413,8 @@ def make_message(source, entry):
         f"🎚 اطمینان: {market_analysis['confidence']}\n"
         f"🧠 توضیح: {market_analysis['reason']}\n"
         f"🌍 حوزه ژئوپولیتیکی/اقتصادی: {', '.join(cross_impact['categories']) or 'تشخیص داده نشد'}\n"
+        f"🏷 دسته‌بندی تکمیلی خبر: {', '.join(article_result['categories']) or 'تشخیص داده نشد'}\n"
+        f"📊 بازارهای مرتبط شناسایی‌شده: {', '.join(article_result['related_markets']) or 'نامشخص'}\n"
         f"🎯 اثر مستقیم احتمالی: {', '.join(cross_impact['direct_effect']) or 'نامشخص'}\n"
         f"🔗 اثرات غیرمستقیم: {', '.join(cross_impact['indirect_effect']) or 'نامشخص'}\n"
         f"⚠️ ارزیابی: {cross_impact['note']}\n"
