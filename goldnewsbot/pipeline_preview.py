@@ -8,7 +8,7 @@ from .classification import classify_news
 
 
 class _ArticleParser(HTMLParser):
-    BLOCKED = {"style", "noscript", "nav", "footer", "header", "aside", "form", "svg", "button"}
+    BLOCKED = {"script", "style", "noscript", "nav", "footer", "header", "aside", "form", "svg", "button"}
     ARTICLE_HINTS = ("article", "story", "content", "post", "entry", "body")
 
     def __init__(self):
