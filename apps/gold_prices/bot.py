@@ -307,6 +307,79 @@ def telegram_send(text: str) -> None:
         raise RuntimeError(f"Telegram API rejected message: {result}")
 
 
+def _symbol_label(symbol: str) -> str:
+    return SYMBOLS[symbol][1]
+
+
+def _latest_symbol_price(symbol: str, quotes: dict, state: dict, now: datetime,
+                         max_age_minutes: int = 45) -> dict | None:
+    live = quotes.get(symbol)
+    if live:
+        return live
+    cutoff = now.astimezone(UTC) - timedelta(minutes=max_age_minutes)
+    candidates = []
+    for sample in state.get("samples", []):
+        if sample.get("symbol", "XAUUSD") != symbol:
+            continue
+        try:
+            stamp = parse_time(sample["timestamp"])
+            if cutoff <= stamp <= now.astimezone(UTC):
+                candidates.append((stamp, float(sample["price"])))
+        except (KeyError, ValueError, TypeError):
+            continue
+    if not candidates:
+        return None
+    stamp, price = max(candidates, key=lambda item: item[0])
+    return {"price": price, "timestamp": stamp, "source": "آخرین قیمت معتبر ذخیره‌شده",
+            "age": int((now.astimezone(UTC) - stamp).total_seconds())}
+
+
+def _price_snapshot(quotes: dict, state: dict, now: datetime) -> dict:
+    snapshot = {}
+    for symbol in SYMBOLS:
+        item = _latest_symbol_price(symbol, quotes, state, now)
+        if item:
+            snapshot[symbol] = {"price": float(item["price"]),
+                                "timestamp": item["timestamp"].isoformat(),
+                                "source": item.get("source", "unknown")}
+    return snapshot
+
+
+def session_report(title: str, quotes: dict, state: dict, now: datetime,
+                   reference: dict | None = None, opening: bool = False) -> tuple[str, dict]:
+    snapshot = _price_snapshot(quotes, state, now)
+    lines = [title, f"🕒 زمان گزارش: {fmt_time(now, SYDNEY if opening else NY)}"]
+    for group in ("فلزات", "جفت‌ارزها", "شاخص‌ها", "انرژی"):
+        lines.append(f"\n<b>{group}</b>")
+        for symbol, (category, label) in SYMBOLS.items():
+            if category != group:
+                continue
+            current = snapshot.get(symbol)
+            previous = (reference or {}).get(symbol)
+            if not current:
+                lines.append(f"• <b>{label}</b>: قیمت تازه/قابل اتکا در دسترس نیست")
+                continue
+            price = float(current["price"])
+            line = f"• <b>{label}</b>: <code>{display_price(symbol, price)}</code>"
+            if previous is not None:
+                old = float(previous.get("price", previous) if isinstance(previous, dict) else previous)
+                change = price - old
+                pct = pct_change(price, old)
+                if opening:
+                    line += f" | گپ: {display_price(symbol, change)} ({pct:+.3f}٪)"
+                else:
+                    line += f" | تغییر: {display_price(symbol, change)} ({pct:+.3f}٪)"
+            else:
+                line += " | مبنای مقایسه ثبت نشده"
+            stamp = parse_time(current["timestamp"])
+            age = max(0, int((now.astimezone(UTC) - stamp).total_seconds()))
+            if age > 0:
+                line += f" | قیمت ثبت‌شده {age // 60} دقیقه قبل"
+            lines.append(line)
+    lines.append("\nℹ️ نرخ‌ها قیمت مرجع فید هستند و ممکن است با قیمت بروکر تفاوت داشته باشند.")
+    return "\n".join(lines), snapshot
+
+
 def process(now: datetime, state: dict, sender=telegram_send, quote_fetcher=fetch_quote,
             multi_quote_fetcher=None) -> list[str]:
     now = now.astimezone(UTC)
@@ -314,54 +387,63 @@ def process(now: datetime, state: dict, sender=telegram_send, quote_fetcher=fetc
     quote = quotes.get("XAUUSD") or quote_fetcher(now)
     if quote:
         quotes["XAUUSD"] = quote
-    if not quotes:
-        print("No fresh prices from multi-symbol or gold backup providers; no price message sent.")
-        return []
-    price = quote["price"] if quote else None
+    state.setdefault("samples", [])
+    state.setdefault("daily_open", {})
+    state.setdefault("sent", {})
     for symbol, item in quotes.items():
         state["samples"].append({"symbol": symbol, "timestamp": item["timestamp"].isoformat(),
                                  "price": item["price"]})
-    cutoff = now - timedelta(days=3)
+    cutoff = now - timedelta(days=8)
     state["samples"] = [s for s in state["samples"] if parse_time(s["timestamp"]) >= cutoff]
     sent = []
     slot = now.replace(minute=0 if now.minute < 30 else 30, second=0, microsecond=0).isoformat()
-    if state.get("last_price_slot") != slot:
+    if quotes and state.get("last_price_slot") != slot:
         sender(prices_message(quotes, state, now))
         state["last_price_slot"] = slot
         sent.append("30m_price")
 
-    if not quote:
-        return sent
-
-    sydney_day = now.astimezone(SYDNEY); open_key = event_due(now, SYDNEY, 8)
+    sydney_day = now.astimezone(SYDNEY)
+    open_key = event_due(now, SYDNEY, 8)
     if open_key and sydney_day.weekday() < 5:
         if sydney_day.weekday() == 0 and state["sent"].get("weekly_open") != open_key:
-            previous = state.get("last_weekly_close")
-            msg = ["🌏 <b>بازگشایی هفتگی طلا | سشن سیدنی</b>",
-                   f"💰 قیمت بازگشایی: <b>{money(price)}</b>", f"🕒 زمان: {fmt_time(now, SYDNEY)}",
-                   *gap_lines(price, previous.get("price") if previous else None), f"🔎 منبع: {quote['source']}"]
-            sender("\n".join(msg)); state["sent"]["weekly_open"] = open_key; sent.append("weekly_open")
+            previous = state.get("last_weekly_close") or {}
+            reference = previous.get("prices", {})
+            if not reference and previous.get("price") is not None:
+                reference = {"XAUUSD": previous["price"]}
+            msg, snapshot = session_report("🌏 <b>گزارش بازگشایی هفتگی بازارها | سشن سیدنی</b>",
+                                           quotes, state, now, reference, opening=True)
+            sender(msg)
+            state["sent"]["weekly_open"] = open_key
+            state["weekly_open"] = {"date": open_key, "prices": snapshot}
+            sent.append("weekly_open")
         elif sydney_day.weekday() in (1, 2, 3, 4) and state["sent"].get("daily_open") != open_key:
-            previous = state.get("last_daily_close")
-            msg = ["🌅 <b>بازگشایی روزانه طلا | سشن سیدنی</b>",
-                   f"💰 قیمت بازگشایی: <b>{money(price)}</b>", f"🕒 زمان: {fmt_time(now, SYDNEY)}",
-                   *gap_lines(price, previous.get("price") if previous else None), f"🔎 منبع: {quote['source']}"]
-            sender("\n".join(msg)); state["daily_open"][open_key] = price
-            state["sent"]["daily_open"] = open_key; sent.append("daily_open")
+            previous = state.get("last_daily_close") or {}
+            reference = previous.get("prices", {})
+            if not reference and previous.get("price") is not None:
+                reference = {"XAUUSD": previous["price"]}
+            msg, snapshot = session_report("🌅 <b>گزارش بازگشایی روزانه بازارها | سشن سیدنی</b>",
+                                           quotes, state, now, reference, opening=True)
+            sender(msg)
+            state["daily_open"][open_key] = snapshot
+            state["sent"]["daily_open"] = open_key
+            sent.append("daily_open")
 
-    close_key = event_due(now, NY, 17); ny_day = now.astimezone(NY)
+    close_key = event_due(now, NY, 17)
+    ny_day = now.astimezone(NY)
     if close_key and ny_day.weekday() < 5 and state["sent"].get("daily_close") != close_key:
-        previous_open = state.get("daily_open", {}).get(now.astimezone(SYDNEY).date().isoformat())
-        change = price - previous_open if previous_open is not None else None
-        pct = pct_change(price, previous_open) if previous_open is not None else None
-        change_text = f"{money(change)} ({pct:+.3f}٪)" if change is not None else "قابل محاسبه نیست"
-        msg = ["🔔 <b>گزارش بسته‌شدن روزانه طلا</b>",
-               f"🌅 قیمت بازگشایی روز: {money(previous_open) if previous_open is not None else 'ثبت نشده'}",
-               f"🌇 قیمت بسته‌شدن: <b>{money(price)}</b>", f"📊 تغییر روز: {change_text}",
-               f"🕒 زمان بسته‌شدن: {fmt_time(now, NY)}", f"🔎 منبع: {quote['source']}"]
-        sender("\n".join(msg)); state["last_daily_close"] = {"price": price, "timestamp": quote["timestamp"].isoformat(), "date": close_key}
+        open_record = state.get("daily_open", {}).get(sydney_day.date().isoformat(), {})
+        if isinstance(open_record, dict) and "prices" in open_record:
+            open_prices = open_record.get("prices", {})
+        else:
+            open_prices = open_record if isinstance(open_record, dict) else {}
+        msg, snapshot = session_report("🔔 <b>گزارش بسته‌شدن روزانه تمام بازارها | ساعت ۱۷ نیویورک</b>",
+                                       quotes, state, now, open_prices, opening=False)
+        sender(msg)
+        state["last_daily_close"] = {"price": snapshot.get("XAUUSD", {}).get("price"),
+                                     "prices": snapshot, "timestamp": now.isoformat(), "date": close_key}
         state["sent"]["daily_close"] = close_key
-        if ny_day.weekday() == 4: state["last_weekly_close"] = state["last_daily_close"].copy()
+        if ny_day.weekday() == 4:
+            state["last_weekly_close"] = state["last_daily_close"].copy()
         sent.append("daily_close")
     return sent
 
