@@ -1,45 +1,45 @@
 {
   "sources": {
     "Federal Reserve": {
-      "success_count": 739,
+      "success_count": 740,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-23T10:45:29.363268+00:00",
+      "last_checked_utc": "2026-11-23T10:49:44.270157+00:00",
       "last_entries_count": 20,
-      "last_mode": "regular",
+      "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-23T10:45:29.363268+00:00"
+      "last_success_utc": "2026-11-23T10:49:44.270157+00:00"
     },
     "BLS": {
-      "success_count": 739,
+      "success_count": 740,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-23T10:45:29.408567+00:00",
+      "last_checked_utc": "2026-11-23T10:49:44.371146+00:00",
       "last_entries_count": 1,
-      "last_mode": "regular",
+      "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-23T10:45:29.408567+00:00"
+      "last_success_utc": "2026-11-23T10:49:44.371146+00:00"
     },
     "BEA": {
-      "success_count": 738,
+      "success_count": 739,
       "failure_count": 1,
       "last_status": "success",
-      "last_checked_utc": "2026-11-23T10:45:29.511097+00:00",
+      "last_checked_utc": "2026-11-23T10:49:44.823139+00:00",
       "last_entries_count": 49,
-      "last_mode": "regular",
+      "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-23T10:45:29.511097+00:00",
+      "last_success_utc": "2026-11-23T10:49:44.823139+00:00",
       "last_failure_utc": "2026-11-20T19:01:33.742129+00:00"
     },
     "European Central Bank": {
-      "success_count": 739,
+      "success_count": 740,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-23T10:45:29.792285+00:00",
+      "last_checked_utc": "2026-11-23T10:49:45.532453+00:00",
       "last_entries_count": 15,
-      "last_mode": "regular",
+      "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-23T10:45:29.792285+00:00"
+      "last_success_utc": "2026-11-23T10:49:45.532453+00:00"
     },
     "Eurostat": {
       "success_count": 191,
@@ -52,24 +52,24 @@
       "last_success_utc": "2026-11-23T10:45:30.125889+00:00"
     },
     "Bank of England": {
-      "success_count": 739,
+      "success_count": 740,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-23T10:45:30.254948+00:00",
+      "last_checked_utc": "2026-11-23T10:49:46.135704+00:00",
       "last_entries_count": 50,
-      "last_mode": "regular",
+      "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-23T10:45:30.254948+00:00"
+      "last_success_utc": "2026-11-23T10:49:46.135704+00:00"
     },
     "Bank of Japan": {
-      "success_count": 739,
+      "success_count": 740,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-23T10:45:30.499598+00:00",
+      "last_checked_utc": "2026-11-23T10:49:46.455827+00:00",
       "last_entries_count": 43,
-      "last_mode": "regular",
+      "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-23T10:45:30.499598+00:00"
+      "last_success_utc": "2026-11-23T10:49:46.455827+00:00"
     },
     "Gold Market": {
       "success_count": 189,
@@ -83,69 +83,69 @@
       "last_failure_utc": "2026-11-23T10:45:57.288705+00:00"
     },
     "Economic Reports": {
-      "success_count": 719,
+      "success_count": 720,
       "failure_count": 5,
-      "last_status": "failure",
-      "last_checked_utc": "2026-11-23T10:46:38.119937+00:00",
-      "last_entries_count": 0,
-      "last_mode": "regular",
-      "last_error": "503 Server Error: Service Unavailable for url: https://news.google.com/rss/search?q=CPI+OR+PCE+OR+GDP+OR+NFP+OR+inflation+OR+interest+rates+OR+unemployment+OR+PMI&hl=en-US&gl=US&ceid=US:en",
-      "last_success_utc": "2026-11-23T10:40:28.315351+00:00",
+      "last_status": "success",
+      "last_checked_utc": "2026-11-23T10:49:47.391498+00:00",
+      "last_entries_count": 85,
+      "last_mode": "breaking",
+      "last_error": null,
+      "last_success_utc": "2026-11-23T10:49:47.391498+00:00",
       "last_failure_utc": "2026-11-23T10:46:38.119937+00:00"
     },
     "Geopolitical News": {
-      "success_count": 715,
+      "success_count": 716,
       "failure_count": 4,
-      "last_status": "failure",
-      "last_checked_utc": "2026-11-23T10:47:03.074999+00:00",
-      "last_entries_count": 0,
-      "last_mode": "regular",
-      "last_error": "503 Server Error: Service Unavailable for url: https://news.google.com/rss/search?q=war+OR+sanctions+OR+Iran+OR+Israel+OR+Ukraine+OR+China+OR+trade+war+OR+tariffs&hl=en-US&gl=US&ceid=US:en",
-      "last_success_utc": "2026-11-23T10:40:28.781863+00:00",
+      "last_status": "success",
+      "last_checked_utc": "2026-11-23T10:49:47.867825+00:00",
+      "last_entries_count": 100,
+      "last_mode": "breaking",
+      "last_error": null,
+      "last_success_utc": "2026-11-23T10:49:47.867825+00:00",
       "last_failure_utc": "2026-11-23T10:47:03.074999+00:00"
     },
     "Oil Trade and Supply": {
-      "success_count": 664,
+      "success_count": 665,
       "failure_count": 5,
-      "last_status": "failure",
-      "last_checked_utc": "2026-11-23T10:47:50.417725+00:00",
-      "last_entries_count": 0,
-      "last_mode": "regular",
-      "last_error": "503 Server Error: Service Unavailable for url: https://news.google.com/rss/search?q=oil+exports+OR+oil+imports+OR+crude+oil+exports+OR+oil+production+OR+oil+supply+OR+OPEC%2B+OR+oil+embargo&hl=en-US&gl=US&ceid=US:en",
-      "last_success_utc": "2026-11-23T10:40:29.250996+00:00",
+      "last_status": "success",
+      "last_checked_utc": "2026-11-23T10:49:48.381828+00:00",
+      "last_entries_count": 100,
+      "last_mode": "breaking",
+      "last_error": null,
+      "last_success_utc": "2026-11-23T10:49:48.381828+00:00",
       "last_failure_utc": "2026-11-23T10:47:50.417725+00:00"
     },
     "Energy Shipping Routes": {
-      "success_count": 652,
+      "success_count": 653,
       "failure_count": 4,
-      "last_status": "failure",
-      "last_checked_utc": "2026-11-23T10:48:16.803320+00:00",
-      "last_entries_count": 0,
-      "last_mode": "regular",
-      "last_error": "503 Server Error: Service Unavailable for url: https://news.google.com/rss/search?q=Strait+of+Hormuz+OR+Red+Sea+shipping+OR+Suez+Canal+OR+Bab+el-Mandeb+OR+oil+tanker+OR+pipeline+disruption&hl=en-US&gl=US&ceid=US:en",
-      "last_success_utc": "2026-11-23T10:40:29.697631+00:00",
+      "last_status": "success",
+      "last_checked_utc": "2026-11-23T10:49:48.743237+00:00",
+      "last_entries_count": 46,
+      "last_mode": "breaking",
+      "last_error": null,
+      "last_success_utc": "2026-11-23T10:49:48.743237+00:00",
       "last_failure_utc": "2026-11-23T10:48:16.803320+00:00"
     },
     "Conflict and Security": {
-      "success_count": 650,
+      "success_count": 651,
       "failure_count": 6,
-      "last_status": "failure",
-      "last_checked_utc": "2026-11-23T10:48:41.339847+00:00",
-      "last_entries_count": 0,
-      "last_mode": "regular",
-      "last_error": "503 Server Error: Service Unavailable for url: https://news.google.com/rss/search?q=war+OR+military+attack+OR+airstrike+OR+missile+OR+invasion+OR+ceasefire+OR+peace+talks+OR+geopolitical+crisis+OR+sanctions&hl=en-US&gl=US&ceid=US:en",
-      "last_success_utc": "2026-11-23T10:40:29.957487+00:00",
+      "last_status": "success",
+      "last_checked_utc": "2026-11-23T10:49:49.036288+00:00",
+      "last_entries_count": 26,
+      "last_mode": "breaking",
+      "last_error": null,
+      "last_success_utc": "2026-11-23T10:49:49.036288+00:00",
       "last_failure_utc": "2026-11-23T10:48:41.339847+00:00"
     },
     "Trade and Sanctions": {
-      "success_count": 652,
+      "success_count": 653,
       "failure_count": 4,
-      "last_status": "failure",
-      "last_checked_utc": "2026-11-23T10:49:08.587071+00:00",
-      "last_entries_count": 0,
-      "last_mode": "regular",
-      "last_error": "503 Server Error: Service Unavailable for url: https://news.google.com/rss/search?q=trade+sanctions+OR+oil+sanctions+OR+export+ban+OR+import+restrictions+OR+tariffs+OR+trade+embargo+OR+shipping+restrictions&hl=en-US&gl=US&ceid=US:en",
-      "last_success_utc": "2026-11-23T10:40:30.319303+00:00",
+      "last_status": "success",
+      "last_checked_utc": "2026-11-23T10:49:49.399876+00:00",
+      "last_entries_count": 39,
+      "last_mode": "breaking",
+      "last_error": null,
+      "last_success_utc": "2026-11-23T10:49:49.399876+00:00",
       "last_failure_utc": "2026-11-23T10:49:08.587071+00:00"
     },
     "Forex and Central Banks": {
@@ -182,6 +182,6 @@
       "last_failure_utc": "2026-11-23T10:49:30.512930+00:00"
     }
   },
-  "updated_at_utc": "2026-11-23T10:49:30.512930+00:00",
-  "last_mode": "regular"
+  "updated_at_utc": "2026-11-23T10:49:49.399876+00:00",
+  "last_mode": "breaking"
 }
