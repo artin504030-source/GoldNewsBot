@@ -10,6 +10,11 @@ on:
         required: false
         type: boolean
         default: true
+      test_delivery:
+        description: "Send a one-off Telegram delivery test message"
+        required: false
+        type: boolean
+        default: false
       breaking_only:
         description: "Run the priority-feed breaking-news scan only"
         required: false
@@ -37,6 +42,15 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
+      - name: Test Telegram delivery
+        if: github.event_name == 'workflow_dispatch' && inputs.test_delivery == true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.CHANNEL_ID }}
+          TELEGRAM_TEST_LABEL: Gold News
+          TELEGRAM_TEST_FOOTER: Gold Admin|News Admin
+        run: python scripts/telegram_delivery_test.py
 
       - name: Install libraries
         run: pip install -r requirements.txt

@@ -5,6 +5,12 @@ on:
     # Every 30 minutes. GitHub may delay scheduled runs; messages include provider timestamps.
     - cron: "0,30 * * * *"
   workflow_dispatch:
+    inputs:
+      test_delivery:
+        description: "Send a one-off Telegram delivery test message"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -27,6 +33,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Test Telegram delivery
+        if: github.event_name == 'workflow_dispatch' && inputs.test_delivery == true
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.GOLD_PRICES_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.GOLD_PRICES_CHANNEL_ID }}
+          TELEGRAM_TEST_LABEL: Gold Prices
+          TELEGRAM_TEST_FOOTER: Gold Admin|Prices Admin
+        run: python scripts/telegram_delivery_test.py
 
       - name: Run Gold Prices bot
         env:

@@ -84,6 +84,30 @@ class GoldPricesTests(unittest.TestCase):
         self.assertEqual(first_count, 1)
         self.assertEqual(len(messages), 1)
 
+    def test_daily_open_and_close_reports_include_all_symbols(self):
+        from apps.gold_prices.bot import SYDNEY, NY
+        open_now = datetime(2026, 11, 24, 8, 15, tzinfo=SYDNEY)
+        def make_quotes(now):
+            return {symbol: {"price": 100.0 + i, "timestamp": now.astimezone(UTC),
+                             "source": "test", "age": 0}
+                    for i, symbol in enumerate(SYMBOLS)}
+        state = {"samples": [], "daily_open": {}, "last_daily_close": None,
+                 "last_weekly_close": None, "sent": {}, "last_price_slot": ""}
+        messages = []
+        process(open_now, state, sender=messages.append, quote_fetcher=lambda n: make_quotes(n)["XAUUSD"],
+                multi_quote_fetcher=make_quotes)
+        self.assertEqual(state["sent"].get("daily_open"), "2026-11-24")
+        self.assertEqual(len(state["daily_open"]["2026-11-24"]), 16)
+        close_now = datetime(2026, 11, 23, 17, 15, tzinfo=NY)
+        process(close_now, state, sender=messages.append, quote_fetcher=lambda n: make_quotes(n)["XAUUSD"],
+                multi_quote_fetcher=make_quotes)
+        self.assertEqual(state["sent"].get("daily_close"), "2026-11-23")
+        self.assertEqual(len(state["last_daily_close"]["prices"]), 16)
+        close_message = messages[-1]
+        for label in ("طلا", "نقره", "EUR/USD", "داوجونز", "نزدک ۱۰۰", "نفت WTI", "گاز طبیعی"):
+            self.assertIn(label, close_message)
+        self.assertIn("تغییر:", close_message)
+
 
 if __name__ == "__main__":
     unittest.main()
