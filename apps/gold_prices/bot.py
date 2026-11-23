@@ -17,7 +17,21 @@ SYDNEY = ZoneInfo("Australia/Sydney")
 XAUS_SPOT = "https://xaus.com/api/v1/spot?compact=1"
 XAUS_INTRADAY = "https://xaus.com/api/v1/intraday?symbol=xau&hours=2"
 BACKUP_SPOT = "https://api.gold-api.com/price/XAU"
+BIQUOTE_LATEST = "https://biquote.io/api/latest"
 MAX_AGE_SECONDS = 300
+SYMBOLS = {
+    "XAUUSD": ("فلزات", "طلا"), "XAGUSD": ("فلزات", "نقره"),
+    "XPTUSD": ("فلزات", "پلاتین"), "XPDUSD": ("فلزات", "پالادیوم"),
+    "EURUSD": ("جفت‌ارزها", "EUR/USD"), "GBPUSD": ("جفت‌ارزها", "GBP/USD"),
+    "USDJPY": ("جفت‌ارزها", "USD/JPY"), "AUDUSD": ("جفت‌ارزها", "AUD/USD"),
+    "USDCAD": ("جفت‌ارزها", "USD/CAD"),
+    "US30": ("شاخص‌ها", "داوجونز | US30"), "USTEC": ("شاخص‌ها", "نزدک ۱۰۰ | NAS100"),
+    "US500": ("شاخص‌ها", "اس‌اندپی ۵۰۰ | SPX500"), "DE30": ("شاخص‌ها", "دکس ۴۰ | DAX40"),
+    "USOIL": ("انرژی", "نفت WTI"), "UKOIL": ("انرژی", "نفت برنت"),
+    "XNGUSD": ("انرژی", "گاز طبیعی"),
+}
+FOREX_SYMBOLS = {"EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD"}
+
 STATE_PATH = Path(os.getenv("GOLD_PRICES_STATE", "apps/gold_prices/state.json"))
 
 
@@ -77,6 +91,97 @@ def fetch_quote(now: datetime) -> dict | None:
     except Exception as exc:
         print(f"Backup provider error: {exc}")
     return None
+
+
+def quote_from_biquote(symbol: str, payload: dict, now: datetime) -> dict | None:
+    if not payload or payload.get("symbol") != symbol:
+        return None
+    if payload.get("stale") is True or payload.get("marketState") != "open":
+        return None
+    price = payload.get("mid")
+    updated = payload.get("timestamp") or payload.get("lastQuoteAt")
+    if price is None or not updated:
+        return None
+    stamp = parse_time(updated)
+    age = (now.astimezone(UTC) - stamp).total_seconds()
+    reported_age = payload.get("quoteAgeSeconds")
+    if age < -60 or age > MAX_AGE_SECONDS:
+        return None
+    if reported_age is not None and float(reported_age) > MAX_AGE_SECONDS:
+        return None
+    return {"price": float(price), "timestamp": stamp,
+            "source": f"BiQuote / {payload.get('source', 'live feed')}",
+            "age": max(0, int(age)), "bid": payload.get("bid"),
+            "ask": payload.get("ask"), "spread": payload.get("spread")}
+
+
+def fetch_multi_quotes(now: datetime) -> dict:
+    query = urllib.parse.urlencode([("symbols", symbol) for symbol in SYMBOLS])
+    try:
+        payload = http_json(f"{BIQUOTE_LATEST}?{query}")
+    except Exception as exc:
+        print(f"BiQuote provider error: {exc}")
+        return {}
+    quotes = {}
+    for symbol in SYMBOLS:
+        quote = quote_from_biquote(symbol, payload.get(symbol), now)
+        if quote:
+            quotes[symbol] = quote
+        else:
+            print(f"No fresh/open BiQuote quote for {symbol}")
+    return quotes
+
+
+def display_price(symbol: str, price: float) -> str:
+    if symbol in FOREX_SYMBOLS:
+        return f"{price:,.{3 if symbol == 'USDJPY' else 5}f}"
+    if symbol == "XNGUSD":
+        return f"{price:,.4f}"
+    return f"{price:,.2f}"
+
+
+def prices_message(quotes: dict, state: dict, now: datetime) -> str:
+    target = now.astimezone(UTC) - timedelta(minutes=30)
+    lines = ["📊 <b>قیمت بازارها | به‌روزرسانی ۳۰ دقیقه‌ای</b>"]
+    samples = state.get("samples", [])
+    for group in ("فلزات", "جفت‌ارزها", "شاخص‌ها", "انرژی"):
+        group_lines = []
+        for symbol, meta in SYMBOLS.items():
+            if meta[0] != group or symbol not in quotes:
+                continue
+            quote = quotes[symbol]
+            line = f"• <b>{meta[1]}</b>: <code>{display_price(symbol, quote['price'])}</code>"
+            candidates = []
+            for sample in samples:
+                if sample.get("symbol", "XAUUSD") != symbol:
+                    continue
+                try:
+                    stamp = parse_time(sample["timestamp"])
+                    delta = abs((stamp - target).total_seconds())
+                    if delta <= 12 * 60:
+                        candidates.append((delta, float(sample["price"])))
+                except (KeyError, ValueError, TypeError):
+                    continue
+            if candidates:
+                _, previous = min(candidates, key=lambda item: item[0])
+                change = quote["price"] - previous
+                pct = pct_change(quote["price"], previous)
+                line += f" | ۳۰دقیقه: {'+' if change > 0 else ''}{display_price(symbol, change)} ({pct:+.3f}٪)"
+            else:
+                line += " | تغییر ۳۰دقیقه: داده مقایسه‌ای موجود نیست"
+            group_lines.append(line)
+        if group_lines:
+            lines.append(f"\n<b>{group}</b>")
+            lines.extend(group_lines)
+    missing = [meta[1] for symbol, meta in SYMBOLS.items() if symbol not in quotes]
+    if missing:
+        lines.append("\n⚠️ <b>قیمت تازه/باز در دسترس نیست:</b> " + "، ".join(missing))
+    sources = sorted({q["source"] for q in quotes.values()})
+    if sources:
+        lines.append("\n🔎 منبع: " + "؛ ".join(sources))
+    lines.append(f"\n🕒 زمان بررسی: {fmt_time(now, NY)} نیویورک")
+    lines.append("ℹ️ قیمت‌ها نرخ مرجع فید هستند و ممکن است با قیمت بروکر شما تفاوت داشته باشند.")
+    return "\n".join(lines)
 
 
 def historical_30m_price(now: datetime, state: dict) -> tuple[float, str] | None:
@@ -202,19 +307,31 @@ def telegram_send(text: str) -> None:
         raise RuntimeError(f"Telegram API rejected message: {result}")
 
 
-def process(now: datetime, state: dict, sender=telegram_send, quote_fetcher=fetch_quote) -> list[str]:
-    now = now.astimezone(UTC); quote = quote_fetcher(now)
-    if not quote:
-        print("No fresh price from primary or backup provider; no price message sent."); return []
-    price = quote["price"]
-    state["samples"].append({"timestamp": quote["timestamp"].isoformat(), "price": price})
+def process(now: datetime, state: dict, sender=telegram_send, quote_fetcher=fetch_quote,
+            multi_quote_fetcher=None) -> list[str]:
+    now = now.astimezone(UTC)
+    quotes = multi_quote_fetcher(now) if multi_quote_fetcher else fetch_multi_quotes(now)
+    quote = quotes.get("XAUUSD") or quote_fetcher(now)
+    if quote:
+        quotes["XAUUSD"] = quote
+    if not quotes:
+        print("No fresh prices from multi-symbol or gold backup providers; no price message sent.")
+        return []
+    price = quote["price"] if quote else None
+    for symbol, item in quotes.items():
+        state["samples"].append({"symbol": symbol, "timestamp": item["timestamp"].isoformat(),
+                                 "price": item["price"]})
     cutoff = now - timedelta(days=3)
     state["samples"] = [s for s in state["samples"] if parse_time(s["timestamp"]) >= cutoff]
     sent = []
     slot = now.replace(minute=0 if now.minute < 30 else 30, second=0, microsecond=0).isoformat()
     if state.get("last_price_slot") != slot:
-        comparison = historical_30m_price(now, state)
-        sender(price_message(quote, comparison, now)); state["last_price_slot"] = slot; sent.append("30m_price")
+        sender(prices_message(quotes, state, now))
+        state["last_price_slot"] = slot
+        sent.append("30m_price")
+
+    if not quote:
+        return sent
 
     sydney_day = now.astimezone(SYDNEY); open_key = event_due(now, SYDNEY, 8)
     if open_key and sydney_day.weekday() < 5:
