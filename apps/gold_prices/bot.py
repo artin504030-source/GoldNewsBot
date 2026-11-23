@@ -115,7 +115,7 @@ def pct_change(current: float, previous: float) -> float | None:
 
 
 def money(value: float) -> str:
-    return f"${value:,.2f}"
+    return f"\u0024{value:,.2f}"
 
 
 def direction(change: float) -> str:
@@ -128,27 +128,19 @@ def fmt_time(dt: datetime, zone: ZoneInfo) -> str:
 
 def price_message(quote: dict, comparison: tuple[float, str] | None, now: datetime) -> str:
     price = quote["price"]
-    lines = [
-        "🟡 <b>قیمت لحظه‌ای طلا | XAU/USD</b>",
-        f"💰 قیمت هر اونس: <b>{money(price)}</b>",
-    ]
+    lines = ["🟡 <b>قیمت لحظه‌ای طلا | XAU/USD</b>", f"💰 قیمت هر اونس: <b>{money(price)}</b>"]
     if comparison:
         old, provenance = comparison
         change = price - old
         pct = pct_change(price, old)
-        lines.extend([
-            f"🕧 قیمت ۳۰ دقیقه قبل: {money(old)}",
-            f"📊 تغییر ۳۰ دقیقه: <b>{money(change)} ({pct:+.3f}٪)</b>",
-            direction(change),
-            f"🧾 مبنای مقایسه: {provenance}",
-        ])
+        lines.extend([f"🕧 قیمت ۳۰ دقیقه قبل: {money(old)}",
+                      f"📊 تغییر ۳۰ دقیقه: <b>{money(change)} ({pct:+.3f}٪)</b>",
+                      direction(change), f"🧾 مبنای مقایسه: {provenance}"])
     else:
         lines.append("📊 تغییر ۳۰ دقیقه: داده تاریخی معتبر در دسترس نیست.")
-    lines.extend([
-        f"🕒 زمان قیمت: {fmt_time(quote['timestamp'], NY)} نیویورک",
-        f"🔎 منبع: {quote['source']} | عمر داده: {quote['age']} ثانیه",
-        "ℹ️ قیمت مرجع اسپات است و ممکن است با نرخ بروکر متفاوت باشد.",
-    ])
+    lines.extend([f"🕒 زمان قیمت: {fmt_time(quote['timestamp'], NY)} نیویورک",
+                  f"🔎 منبع: {quote['source']} | عمر داده: {quote['age']} ثانیه",
+                  "ℹ️ قیمت مرجع اسپات است و ممکن است با نرخ بروکر متفاوت باشد."])
     return "\n".join(lines)
 
 
@@ -158,10 +150,7 @@ def gap_lines(current: float, previous: float | None) -> list[str]:
     gap = current - previous
     pct = pct_change(current, previous)
     label = "گپ مثبت" if gap > 0 else ("گپ منفی" if gap < 0 else "بدون گپ")
-    return [
-        f"📏 {label}: <b>{money(gap)} ({pct:+.3f}٪)</b>",
-        f"📌 قیمت مرجع قبلی: {money(previous)}",
-    ]
+    return [f"📏 {label}: <b>{money(gap)} ({pct:+.3f}٪)</b>", f"📌 قیمت مرجع قبلی: {money(previous)}"]
 
 
 def event_due(now: datetime, zone: ZoneInfo, hour: int, minute: int = 0, window: int = 45) -> str | None:
@@ -178,9 +167,7 @@ def load_state(path: Path = STATE_PATH) -> dict:
                 "sent": {"daily_open": "", "weekly_open": "", "daily_close": ""}, "last_price_slot": ""}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        data.setdefault("samples", [])
-        data.setdefault("daily_open", {})
-        data.setdefault("sent", {})
+        data.setdefault("samples", []); data.setdefault("daily_open", {}); data.setdefault("sent", {})
         return data
     except (OSError, json.JSONDecodeError):
         raise RuntimeError("State file is unreadable; refusing to reset session history.")
@@ -194,8 +181,7 @@ def save_state(state: dict, path: Path = STATE_PATH) -> None:
 
 
 def telegram_send(text: str) -> None:
-    token = os.getenv("GOLD_PRICES_BOT_TOKEN")
-    chat_id = os.getenv("GOLD_PRICES_CHANNEL_ID")
+    token = os.getenv("GOLD_PRICES_BOT_TOKEN"); chat_id = os.getenv("GOLD_PRICES_CHANNEL_ID")
     if not token or not chat_id:
         raise RuntimeError("Missing GOLD_PRICES_BOT_TOKEN or GOLD_PRICES_CHANNEL_ID GitHub secret")
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -209,87 +195,59 @@ def telegram_send(text: str) -> None:
 
 
 def process(now: datetime, state: dict, sender=telegram_send, quote_fetcher=fetch_quote) -> list[str]:
-    now = now.astimezone(UTC)
-    quote = quote_fetcher(now)
+    now = now.astimezone(UTC); quote = quote_fetcher(now)
     if not quote:
-        print("No fresh price from primary or backup provider; no price message sent.")
-        return []
+        print("No fresh price from primary or backup provider; no price message sent."); return []
     price = quote["price"]
     state["samples"].append({"timestamp": quote["timestamp"].isoformat(), "price": price})
     cutoff = now - timedelta(days=3)
     state["samples"] = [s for s in state["samples"] if parse_time(s["timestamp"]) >= cutoff]
     sent = []
-
-    # One price update per UTC half-hour slot. GitHub scheduled runs may be delayed.
     slot = now.replace(minute=0 if now.minute < 30 else 30, second=0, microsecond=0).isoformat()
     if state.get("last_price_slot") != slot:
         comparison = historical_30m_price(now, state)
-        sender(price_message(quote, comparison, now))
-        state["last_price_slot"] = slot
-        sent.append("30m_price")
+        sender(price_message(quote, comparison, now)); state["last_price_slot"] = slot; sent.append("30m_price")
 
-    # Sydney session open: weekdays are daily opens; Monday is also the weekly reopen.
-    sydney_day = now.astimezone(SYDNEY)
-    open_key = event_due(now, SYDNEY, 8)
+    sydney_day = now.astimezone(SYDNEY); open_key = event_due(now, SYDNEY, 8)
     if open_key and sydney_day.weekday() < 5:
         if sydney_day.weekday() == 0 and state["sent"].get("weekly_open") != open_key:
             previous = state.get("last_weekly_close")
-            msg = [
-                "🌏 <b>بازگشایی هفتگی طلا | سشن سیدنی</b>",
-                f"💰 قیمت بازگشایی: <b>{money(price)}</b>",
-                f"🕒 زمان: {fmt_time(now, SYDNEY)}",
-                *gap_lines(price, previous.get("price") if previous else None),
-                f"🔎 منبع: {quote['source']}",
-            ]
-            sender("\n".join(msg))
-            state["sent"]["weekly_open"] = open_key
-            sent.append("weekly_open")
+            msg = ["🌏 <b>بازگشایی هفتگی طلا | سشن سیدنی</b>",
+                   f"💰 قیمت بازگشایی: <b>{money(price)}</b>", f"🕒 زمان: {fmt_time(now, SYDNEY)}",
+                   *gap_lines(price, previous.get("price") if previous else None), f"🔎 منبع: {quote['source']}"]
+            sender("\n".join(msg)); state["sent"]["weekly_open"] = open_key; sent.append("weekly_open")
         elif sydney_day.weekday() in (1, 2, 3, 4) and state["sent"].get("daily_open") != open_key:
             previous = state.get("last_daily_close")
-            msg = [
-                "🌅 <b>بازگشایی روزانه طلا | سشن سیدنی</b>",
-                f"💰 قیمت بازگشایی: <b>{money(price)}</b>",
-                f"🕒 زمان: {fmt_time(now, SYDNEY)}",
-                *gap_lines(price, previous.get("price") if previous else None),
-                f"🔎 منبع: {quote['source']}",
-            ]
-            sender("\n".join(msg))
-            state["daily_open"][open_key] = price
-            state["sent"]["daily_open"] = open_key
-            sent.append("daily_open")
+            msg = ["🌅 <b>بازگشایی روزانه طلا | سشن سیدنی</b>",
+                   f"💰 قیمت بازگشایی: <b>{money(price)}</b>", f"🕒 زمان: {fmt_time(now, SYDNEY)}",
+                   *gap_lines(price, previous.get("price") if previous else None), f"🔎 منبع: {quote['source']}"]
+            sender("\n".join(msg)); state["daily_open"][open_key] = price
+            state["sent"]["daily_open"] = open_key; sent.append("daily_open")
 
-    close_key = event_due(now, NY, 17)
-    ny_day = now.astimezone(NY)
+    close_key = event_due(now, NY, 17); ny_day = now.astimezone(NY)
     if close_key and ny_day.weekday() < 5 and state["sent"].get("daily_close") != close_key:
         previous_open = state.get("daily_open", {}).get(now.astimezone(SYDNEY).date().isoformat())
         change = price - previous_open if previous_open is not None else None
         pct = pct_change(price, previous_open) if previous_open is not None else None
-        msg = [
-            "🔔 <b>گزارش بسته‌شدن روزانه طلا</b>",
-            f"🌅 قیمت بازگشایی روز: {money(previous_open) if previous_open is not None else 'ثبت نشده'}",
-            f"🌇 قیمت بسته‌شدن: <b>{money(price)}</b>",
-            f"📊 تغییر روز: {money(change) + f' ({pct:+.3f}٪)' if change is not None else 'قابل محاسبه نیست'}",
-            f"🕒 زمان بسته‌شدن: {fmt_time(now, NY)}",
-            f"🔎 منبع: {quote['source']}",
-        ]
-        sender("\n".join(msg))
-        state["last_daily_close"] = {"price": price, "timestamp": quote["timestamp"].isoformat(), "date": close_key}
+        change_text = f"{money(change)} ({pct:+.3f}٪)" if change is not None else "قابل محاسبه نیست"
+        msg = ["🔔 <b>گزارش بسته‌شدن روزانه طلا</b>",
+               f"🌅 قیمت بازگشایی روز: {money(previous_open) if previous_open is not None else 'ثبت نشده'}",
+               f"🌇 قیمت بسته‌شدن: <b>{money(price)}</b>", f"📊 تغییر روز: {change_text}",
+               f"🕒 زمان بسته‌شدن: {fmt_time(now, NY)}", f"🔎 منبع: {quote['source']}"]
+        sender("\n".join(msg)); state["last_daily_close"] = {"price": price, "timestamp": quote["timestamp"].isoformat(), "date": close_key}
         state["sent"]["daily_close"] = close_key
-        if ny_day.weekday() == 4:
-            state["last_weekly_close"] = state["last_daily_close"].copy()
+        if ny_day.weekday() == 4: state["last_weekly_close"] = state["last_daily_close"].copy()
         sent.append("daily_close")
     return sent
 
 
 def main() -> int:
-    now = datetime.now(UTC)
-    state = load_state()
-    try:
-        sent = process(now, state)
-    finally:
-        save_state(state)
-    print("Sent:", ", ".join(sent) if sent else "no event")
-    return 0
+    if not os.getenv("GOLD_PRICES_BOT_TOKEN") or not os.getenv("GOLD_PRICES_CHANNEL_ID"):
+        print("Gold Prices Telegram secrets are not configured; skipping delivery."); return 0
+    now = datetime.now(UTC); state = load_state()
+    try: sent = process(now, state)
+    finally: save_state(state)
+    print("Sent:", ", ".join(sent) if sent else "no event"); return 0
 
 
 if __name__ == "__main__":
