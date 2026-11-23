@@ -20,6 +20,7 @@ class _ArticleParser(HTMLParser):
         self.current = []
         self.paragraphs = []
         self.fallback_paragraphs = []
+        self.general_parts = []
         self.jsonld_depth = 0
         self.jsonld_parts = []
         self.jsonld_bodies = []
@@ -80,8 +81,10 @@ class _ArticleParser(HTMLParser):
     def handle_data(self, data):
         if self.jsonld_depth:
             self.jsonld_parts.append(data)
-        elif self.paragraph_depth and not self.blocked_depth and data.strip():
-            self.current.append(data.strip())
+        elif not self.blocked_depth and data.strip():
+            self.general_parts.append(data.strip())
+            if self.paragraph_depth:
+                self.current.append(data.strip())
 
 
 def _article_bodies(value):
@@ -103,6 +106,8 @@ def extract_text(html, *, max_chars=30000, min_chars=80):
     parser.feed(html or "")
     # Prefer publisher-supplied schema.org articleBody, then article/main paragraphs.
     candidates = parser.jsonld_bodies or parser.paragraphs or parser.fallback_paragraphs
+    if not candidates and parser.general_parts:
+        candidates = [" ".join(parser.general_parts)]
     text = "\n\n".join(dict.fromkeys(re.sub(r"\s+", " ", x).strip() for x in candidates if x.strip()))
     if len(text) < min_chars and parser.meta_descriptions:
         text = "\n\n".join(parser.meta_descriptions)

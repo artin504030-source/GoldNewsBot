@@ -20,6 +20,12 @@ class ArticleExtractionTests(unittest.TestCase):
     def test_short_or_blocked_page_returns_empty(self):
         self.assertEqual(extract_text('<nav>' + 'noise ' * 100 + '</nav>'), '')
 
+    def test_div_text_fallback_when_publisher_has_no_paragraph_tags(self):
+        html = '<html><body><nav>menu noise</nav><div>OPEC crude oil supply disruption. ' + ('Detailed article text. ' * 8) + '</div></body></html>'
+        text = extract_text(html)
+        self.assertIn('OPEC crude oil supply disruption', text)
+        self.assertNotIn('menu noise', text)
+
     def test_meta_description_is_fallback(self):
         description = 'Central bank officials discussed interest rates and inflation. ' * 3
         text = extract_text('<meta name="description" content="' + description + '">')
