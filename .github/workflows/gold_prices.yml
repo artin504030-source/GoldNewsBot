@@ -2,8 +2,8 @@ name: Gold Prices Bot
 
 on:
   schedule:
-    # Every 30 minutes. GitHub may delay scheduled runs; messages include provider timestamps.
-    - cron: "0,30 * * * *"
+    # Every 30 minutes, offset from the busy top-of-hour window.
+    - cron: "7,37 * * * *"
   workflow_dispatch:
     inputs:
       test_delivery:
