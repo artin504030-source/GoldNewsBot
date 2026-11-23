@@ -274,30 +274,58 @@ def _translation_chunks(text, limit=430):
     return chunks
 
 
+def _contains_persian(text):
+    return any("\u0600" <= char <= "\u06ff" for char in str(text or ""))
+
+
+def _google_translate_fallback(text):
+    """Free Google Translate endpoint fallback; no API key is required."""
+    response = requests.get(
+        "https://translate.googleapis.com/translate_a/single",
+        params={"client": "gtx", "sl": "auto", "tl": "fa", "dt": "t", "q": text},
+        timeout=20,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    result = "".join(item[0] for item in (payload[0] or []) if item and item[0])
+    if not result or not _contains_persian(result):
+        raise ValueError("fallback returned no Persian text")
+    return html.unescape(result)
+
+
 def translate_to_persian(text):
     if not text:
         return ""
+    if _contains_persian(text):
+        return str(text)
     translated = []
-    for chunk in _translation_chunks(text):
+    chunks = _translation_chunks(text)
+    for index, chunk in enumerate(chunks, start=1):
+        result = ""
         try:
             response = requests.get(
                 "https://api.mymemory.translated.net/get",
                 params={"q": chunk, "langpair": "en|fa"},
-                timeout=25,
+                timeout=20,
             )
             response.raise_for_status()
             data = response.json()
-            if str(data.get("responseStatus")) == "200":
-                translated.append(html.unescape(data["responseData"]["translatedText"]))
+            candidate = html.unescape(data.get("responseData", {}).get("translatedText", ""))
+            if str(data.get("responseStatus")) == "200" and _contains_persian(candidate):
+                result = candidate
             else:
-                detail = data.get("responseDetails") or "unknown translation error"
-                print("Translation service:", detail)
-                translated.append("[ترجمه این بخش در دسترس نیست]")
+                print("MyMemory translation unavailable; trying fallback.")
         except Exception as error:
-            print("Translation error:", error)
-            translated.append("[ترجمه این بخش در دسترس نیست]")
-        if len(_translation_chunks(text)) > 1:
-            time.sleep(0.15)
+            print("MyMemory translation error; trying fallback:", error)
+        if not result:
+            try:
+                result = _google_translate_fallback(chunk)
+            except Exception as error:
+                print("Google translation fallback failed:", error)
+                result = "[ترجمه این بخش موقتاً در دسترس نیست]"
+        translated.append(result)
+        if index < len(chunks):
+            time.sleep(0.2)
     return " ".join(part.strip() for part in translated if part.strip())
 
 
@@ -383,11 +411,14 @@ def make_message(source, entry):
     published_dt = entry_datetime(entry)
     kabul_published = kabul_time(published_dt) if published_dt else clean_text(entry.get("published", "زمان نامشخص"))
 
-    market_analysis = analyze_market_news(title, raw_summary)
-    cross_impact = analyze_cross_market_impact(title, raw_summary)
     article_result = fetch_and_classify_article(link, title, raw_summary)
     article_text = article_result["body"]
     full_article = article_result["full_article"]
+
+    # Analyze the extracted article body when available, not only the short RSS snippet.
+    analysis_text = article_text or raw_summary
+    market_analysis = analyze_market_news(title, analysis_text)
+    cross_impact = analyze_cross_market_impact(title, analysis_text)
 
     persian_title = translate_to_persian(title)
     time.sleep(TRANSLATION_DELAY)
