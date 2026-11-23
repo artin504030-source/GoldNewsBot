@@ -12,6 +12,7 @@ from market_analysis import analyze_market_news
 from cross_market_impact import analyze_cross_market_impact
 from breaking_news_analysis import score_breaking_news, format_breaking_badge
 from source_health import record_source_check
+from goldnewsbot.integration import fetch_and_classify_article
 
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -379,46 +380,45 @@ def make_message(source, entry):
     title = clean_text(entry.get("title", "بدون عنوان"))
     raw_summary = clean_text(entry.get("summary", ""))
     link = entry.get("link", "")
-    published = entry.get("published", "زمان نامشخص")
     published_dt = entry_datetime(entry)
-    kabul_published = kabul_time(published_dt) if published_dt else "زمان نامشخص"
-    relevance = analyse_news(title, raw_summary)
-    breaking = is_breaking_news(title, raw_summary)
-    breaking_assessment = score_breaking_news(title, raw_summary, source=source)
-    symbols = detect_symbols(title, raw_summary)
-    importance = detect_importance(title, raw_summary)
+    kabul_published = kabul_time(published_dt) if published_dt else clean_text(entry.get("published", "زمان نامشخص"))
+
     market_analysis = analyze_market_news(title, raw_summary)
     cross_impact = analyze_cross_market_impact(title, raw_summary)
-    affected_symbols = ", ".join(dict.fromkeys(market_analysis["symbols"] + cross_impact["symbols"]))
+    article_result = fetch_and_classify_article(link, title, raw_summary)
+    article_text = article_result["body"]
+    full_article = article_result["full_article"]
 
-    article_text, full_article = fetch_article_text(link, raw_summary)
     persian_title = translate_to_persian(title)
     time.sleep(TRANSLATION_DELAY)
     persian_article = translate_to_persian(article_text) if article_text else "متن خبر از منبع قابل دریافت نبود."
-    article_status = "متن گزارش از وب‌سایت منبع دریافت شد." if full_article else "⚠️ متن کامل از وب‌سایت دریافت نشد؛ متن RSS ترجمه شده است و ممکن است کامل نباشد."
+    article_status = "متن کامل خبر از وب‌سایت منبع دریافت شد." if full_article else "⚠️ متن کامل دریافت نشد؛ متن موجود از فید خبری ترجمه شده و ممکن است خلاصه باشد."
+
+    impact = market_analysis.get("potential_effect", "نامشخص")
+    reason = market_analysis.get("reason", "")
+    direct_effects = ", ".join(cross_impact.get("direct_effect", []))
+    indirect_effects = ", ".join(cross_impact.get("indirect_effect", []))
+    analysis_lines = [f"اثر احتمالی: {impact}"]
+    if reason:
+        analysis_lines.append(str(reason))
+    if direct_effects:
+        analysis_lines.append(f"اثر مستقیم: {direct_effects}")
+    if indirect_effects:
+        analysis_lines.append(f"اثر غیرمستقیم: {indirect_effects}")
 
     return (
-        "کانال خبری گلد نیوز | Gold News Channel\n"
-        f"{'🚨 خبر فوری' if breaking else '🟡 گزارش خبری'}\n\n"
-        f"📰 عنوان خبر: {persian_title}\n"
-        f"نماد خبر: {symbols}\n"
-        f"🚨 درجه فوریت: {format_breaking_badge(breaking_assessment)}\n"
-        f"اهمیت خبر: {importance}\n"
-        f"ارتباط با طلا: {relevance['label']} ({relevance['score']}/100)\n"
-        f"📌 نمادهای مرتبط: {affected_symbols}\n"
-        f"🔎 لحن خبر: {market_analysis['potential_effect']}\n"
-        f"🎚 اطمینان: {market_analysis['confidence']}\n"
-        f"🧠 توضیح: {market_analysis['reason']}\n"
-        f"🌍 حوزه ژئوپولیتیکی/اقتصادی: {', '.join(cross_impact['categories']) or 'تشخیص داده نشد'}\n"
-        f"🎯 اثر مستقیم احتمالی: {', '.join(cross_impact['direct_effect']) or 'نامشخص'}\n"
-        f"🔗 اثرات غیرمستقیم: {', '.join(cross_impact['indirect_effect']) or 'نامشخص'}\n"
-        f"⚠️ ارزیابی: {cross_impact['note']}\n"
-        f"دسته‌بندی: {relevance['category']}\n"
-        f"🏛 منبع: {source} ({source_status(source)})\n"
-        f"🕒 زمان انتشار منبع: {published}\n"
-        f"🕒 زمان کابل: {kabul_published}\n\n"
-        f"🇮🇷 ترجمه فارسی متن خبر:\n{article_status}\n\n{persian_article}\n\n"
-        f"🔗 لینک گزارش اصلی:\n{link}"
+        "📰 خبر | Gold News\n\n"
+        f"📰 عنوان: {persian_title}\n"
+        f"📅 تاریخ انتشار: {kabul_published}\n\n"
+        f"🔎 متن خبر:\n{article_status}\n\n{persian_article}\n\n"
+        "🟡 تحلیل کوتاه برای XAUUSD:\n"
+        + "\n".join(analysis_lines)
+        + "\n\n"
+        + f"🏛 منبع: {source}\n"
+        + (f"🔗 لینک خبر اصلی: {link}\n\n" if link else "\n")
+        + "⚠️ این تحلیل بر اساس اطلاعات زمان انتشار خبر است و سیگنال معاملاتی یا توصیه خریدوفروش نیست.\n\n"
+        + "Gold Admin\n"
+        + "News Admin"
     )
 
 def main():
