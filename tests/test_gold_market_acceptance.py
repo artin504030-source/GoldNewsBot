@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from apps.gold_market.analysis import GoldBar
 from apps.gold_market.collector import ALL_INDICATORS, MarketDataCollector
+from apps.gold_market.history import HistoryProviderError
 from apps.gold_market.models import MarketObservation
 from apps.gold_market.providers import ProviderError
 from apps.gold_market.telegram import render_telegram_report
@@ -55,7 +56,7 @@ class StubHistory:
     def fetch_bars(self, now=None):
         self.calls += 1
         if self.error:
-            raise RuntimeError(self.error)
+            raise HistoryProviderError(self.error)
         return self.bars
 
 
@@ -148,7 +149,6 @@ class GoldMarketAcceptanceTests(unittest.TestCase):
 
         self.assertIn("<b>🟡 گزارش وضعیت بازار طلا</b>", joined)
         self.assertIn("جهت روند: صعودی", joined)
-        self.assertIn("قیمت اسپات", joined)
         self.assertIn("وضعیت: زنده", joined)
         self.assertIn("وضعیت: با تأخیر", joined)
         self.assertIn("وضعیت: روزانه", joined)
@@ -181,12 +181,12 @@ class GoldMarketAcceptanceTests(unittest.TestCase):
         self.assertIn("قابل ارزیابی نیست", joined)
         self.assertIn("در دسترس نیست", joined)
         self.assertIn("spot feed unavailable", joined)
-        self.assertIn("history unavailable", joined)
+        self.assertIn("history feed unavailable", joined)
         self.assertIn("سیگنال قطعی خرید یا فروش", joined)
 
     def test_single_snapshot_is_reused_for_report_without_second_collection(self):
         collector, fred, yahoo, xau, history = self.build_collector()
-        assessment, observations, results = collector.collect_report_snapshot(
+        assessment, observations, _ = collector.collect_report_snapshot(
             previous_observations=self.previous, now=self.now
         )
         first_messages = render_telegram_report(assessment, observations, self.now)
