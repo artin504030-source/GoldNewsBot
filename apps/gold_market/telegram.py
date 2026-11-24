@@ -19,6 +19,8 @@ SECTION_HEADINGS = {
     "🔎 هشدارهای کیفیت داده",
 }
 
+SIGNATURE_LINES = ("Gold Admin", "Market Admin")
+
 
 def _telegram_lines(report: str) -> list[str]:
     """Escape every text line and bold only known, static section headings."""
@@ -29,6 +31,7 @@ def _telegram_lines(report: str) -> list[str]:
             rendered.append(f"<b>{safe}</b>")
         else:
             rendered.append(safe)
+    rendered.extend(["", *(f"<b>{line}</b>" for line in SIGNATURE_LINES)])
     return rendered
 
 
