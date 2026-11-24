@@ -3,6 +3,7 @@ from dataclasses import dataclass,replace
 from datetime import datetime,timezone
 from .analysis import analyze_market
 from .history import HistoryProviderError,XausDailyHistoryProvider
+from .previous import fetch_previous_snapshot
 from .models import IndicatorId,MarketObservation
 from .providers import FredProvider,ProviderError,XausSpotProvider,YahooChartProvider
 from .validation import validate_observation
@@ -29,8 +30,10 @@ class MarketDataCollector:
     def assess_market(self,previous_observations=None,upcoming_events=(),now=None):
         now=now or datetime.now(timezone.utc); results=self.collect_all()
         observations={k:v.observation for k,v in results.items() if v.observation is not None}
+        if previous_observations is None:
+            previous_observations=fetch_previous_snapshot(self.fred,self.yahoo)
         try: bars=self.history.fetch_bars(now=now); error=None
-        except (HistoryProviderError,ValueError) as exc: bars, error=(),str(exc)
+        except (HistoryProviderError,ValueError) as exc: bars,error=(),str(exc)
         report=analyze_market(observations,bars,previous_observations,upcoming_events,now)
         if error: report=replace(report,data_warnings=report.data_warnings+(f"XAUUSD history unavailable: {error}",))
         return report
