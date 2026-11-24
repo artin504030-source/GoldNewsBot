@@ -16,12 +16,12 @@ def observation(symbol, value, status="LIVE", age_hours=0):
     )
 
 
-def rising_bars(count=25):
+def rising_bars(count=25, last_age_hours=1):
     bars = []
     for index in range(count):
         close = Decimal("2600") + Decimal(index * 2)
         bars.append(GoldBar(
-            NOW - timedelta(hours=count-index),
+            NOW - timedelta(hours=count-index-1 + last_age_hours),
             close - Decimal("1"), close + Decimal("2"),
             close - Decimal("2"), close
         ))
@@ -57,6 +57,21 @@ class GoldMarketAnalysisTests(unittest.TestCase):
         self.assertIn("XAUUSD", " ".join(report.data_warnings))
         self.assertEqual(report.confidence, "LOW")
 
+    def test_old_candle_history_is_not_classified(self):
+        report = analyze_market(
+            {"XAUUSD": observation("XAUUSD", 2650)},
+            rising_bars(last_age_hours=8)
+        )
+        self.assertEqual(report.trend, "UNAVAILABLE")
+        self.assertIsNone(report.support)
+
+    def test_future_candle_history_is_not_classified(self):
+        report = analyze_market(
+            {"XAUUSD": observation("XAUUSD", 2650)},
+            rising_bars(last_age_hours=-2)
+        )
+        self.assertEqual(report.trend, "UNAVAILABLE")
+
     def test_dollar_and_yields_context_are_not_causal_claims(self):
         current = {
             "XAUUSD": observation("XAUUSD", 2650),
@@ -85,6 +100,11 @@ class GoldMarketAnalysisTests(unittest.TestCase):
             upcoming_events=("US CPI release",)
         )
         self.assertEqual(report.event_risk, ("US CPI release",))
+
+    def test_empty_observations_have_no_as_of_timestamp(self):
+        report = analyze_market({}, rising_bars())
+        self.assertIsNone(report.as_of)
+        self.assertEqual(report.confidence, "LOW")
 
     def test_naive_timestamp_is_rejected(self):
         with self.assertRaises(ValueError):

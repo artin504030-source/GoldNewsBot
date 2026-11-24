@@ -126,8 +126,8 @@ def analyze_market(
 ) -> MarketAssessment:
     """Build a reproducible market-state assessment from validated inputs.
 
-    At least 20 completed gold bars are required before trend/levels are
-    classified. Missing history produces UNAVAILABLE rather than a guess.
+    At least 20 completed gold bars are required before classifying trend/levels.
+    Missing history produces UNAVAILABLE rather than a guess.
     """
     now = now or datetime.now(timezone.utc)
     if now.tzinfo is None or now.utcoffset() is None:
@@ -147,6 +147,14 @@ def analyze_market(
     bars = sorted(gold_bars, key=lambda item: item.observed_at)
     if len(bars) < 20:
         warnings.append("At least 20 completed XAUUSD bars are required for structure analysis")
+        regime = trend = volatility = "UNAVAILABLE"
+        support = resistance = atr_percent = None
+    elif bars[-1].observed_at > now:
+        warnings.append("Latest XAUUSD bar is timestamped in the future")
+        regime = trend = volatility = "UNAVAILABLE"
+        support = resistance = atr_percent = None
+    elif now - bars[-1].observed_at > __import__("datetime").timedelta(hours=6):
+        warnings.append("Latest XAUUSD bar is older than the six-hour freshness limit")
         regime = trend = volatility = "UNAVAILABLE"
         support = resistance = atr_percent = None
     else:
@@ -176,9 +184,9 @@ def analyze_market(
 
     drivers = _driver_context(valid, previous_observations or {})
     comparable = sum(value != "UNKNOWN" for value in drivers.values())
-    if len(bars) >= 20 and len(valid) >= 5 and comparable >= 4:
+    if len(bars) >= 20 and trend != "UNAVAILABLE" and len(valid) >= 5 and comparable >= 4:
         confidence = "HIGH"
-    elif len(bars) >= 20 and len(valid) >= 3:
+    elif len(bars) >= 20 and trend != "UNAVAILABLE" and len(valid) >= 3:
         confidence = "MEDIUM"
     else:
         confidence = "LOW"
@@ -193,11 +201,11 @@ def analyze_market(
         main = "Range conditions remain the working scenario until a confirmed close breaks the recent range."
         alternative = "A sustained close outside the recent range signals a possible regime change."
     else:
-        main = "No primary directional scenario: validated XAUUSD candle history is insufficient."
-        alternative = "Reassess after at least 20 completed XAUUSD bars are available."
+        main = "No primary directional scenario: validated XAUUSD candle history is insufficient or stale."
+        alternative = "Reassess after at least 20 fresh completed XAUUSD bars are available."
 
     timestamps = [item.observed_at for item in valid.values()]
-    as_of = min(timestamps) if not timestamps else max(timestamps)
+    as_of = max(timestamps) if timestamps else None
     return MarketAssessment(
         as_of=as_of,
         regime=regime,
