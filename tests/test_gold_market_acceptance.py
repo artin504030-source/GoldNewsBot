@@ -177,7 +177,10 @@ class GoldMarketAcceptanceTests(unittest.TestCase):
         self.assertNotIn("XAUUSD", observations)
         self.assertEqual(assessment.trend, "UNAVAILABLE")
         self.assertEqual(history.calls, 1)
-        self.assertTrue(any("XAUUSD: missing" in w for w in assessment.data_warnings))
+        self.assertTrue(any(
+            "XAUUSD spot observation is not currently usable" in w
+            for w in assessment.data_warnings
+        ))
         self.assertTrue(any("history unavailable" in w for w in assessment.data_warnings))
         self.assertIn("قابل ارزیابی نیست", joined)
         self.assertIn("در دسترس نیست", joined)
