@@ -37,15 +37,14 @@ def obs(s,v,status="LIVE",age=0):
 def bars(n=25,age=1):
     out=[]
     for i in range(n):
-        c=Decimal(2600+i*2); out.append(GoldBar(NOW-timedelta(hours=n-i-1+age),c-1,c+2,c-2,c))
+        c=Decimal(2600+i*2); out.append(GoldBar(NOW-timedelta(hours=n-i-1+age),c-1,c+5,c-5,c))
     return out
 class AnalysisTests(unittest.TestCase):
     def test_bullish_levels(self):
         r=analyze_market({"XAUUSD":obs("XAUUSD",2650)},bars(),now=NOW); self.assertEqual(r.trend,"BULLISH"); self.assertIsNotNone(r.support)
-    def test_insufficient(self):
-        self.assertEqual(analyze_market({},bars(10),now=NOW).trend,"UNAVAILABLE")
+    def test_insufficient(self): self.assertEqual(analyze_market({},bars(10),now=NOW).trend,"UNAVAILABLE")
     def test_daily_open_optional(self):
-        b=[GoldBar(NOW-timedelta(hours=24*(25-i)),None,Decimal(2650),Decimal(2600),Decimal(2640+i)) for i in range(25)]
+        b=[GoldBar(NOW-timedelta(hours=24*(25-i)),None,Decimal(2700),Decimal(2500),Decimal(2640+i)) for i in range(25)]
         self.assertNotEqual(analyze_market({"XAUUSD":obs("XAUUSD",2650)},b,now=NOW).trend,"UNAVAILABLE")
     def test_old_history(self): self.assertEqual(analyze_market({},bars(age=120),now=NOW).trend,"UNAVAILABLE")
     def test_future_history(self): self.assertEqual(analyze_market({},bars(age=-2),now=NOW).trend,"UNAVAILABLE")
