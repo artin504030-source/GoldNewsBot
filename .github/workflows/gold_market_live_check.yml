@@ -1,6 +1,12 @@
 name: Gold Market Live Data Check
 
 on:
+  push:
+    branches:
+      - feat/gold-market-foundation
+    paths:
+      - "apps/gold_market/**"
+      - ".github/workflows/gold_market_live_check.yml"
   workflow_dispatch:
 
 permissions:
