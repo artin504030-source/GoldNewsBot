@@ -52,7 +52,7 @@ class GoldMarketTelegramFormatterTests(unittest.TestCase):
         messages = split_telegram_html(["الف &amp; " + ("متن " * 100)], max_length=100)
         self.assertGreater(len(messages), 1)
         self.assertTrue(all(len(message) <= 100 for message in messages))
-        self.assertTrue(all("&amp;" in message for message in messages))
+        self.assertEqual("".join(messages).count("&amp;"), 1)
 
     def test_missing_data_and_disclaimer_are_preserved(self):
         messages = render_telegram_report(
