@@ -18,7 +18,7 @@ class Tests(unittest.TestCase):
     def test_fred_does_not_claim_dxy(self):
         with self.assertRaises(ProviderError): FredProvider("key").fetch("DXY")
     def test_yahoo_delayed_spot_symbol(self):
-        s=Mock(); s.get.return_value=Response({"chart":{"result":[{"timestamp":[1795500000],"indicators":{"quote":[{"close":[2650.5}]}}]}})
+        s=Mock(); s.get.return_value=Response({"chart":{"result":[{"timestamp":[1795500000],"indicators":{"quote":[{"close":[2650.5]}]}}]}})
         x=YahooChartProvider(s).fetch("XAUUSD"); self.assertEqual(x.status,"DELAYED"); self.assertEqual(x.source,"Yahoo Finance:XAUUSD=X")
         self.assertNotEqual(YahooChartProvider.SYMBOLS["XAUUSD"],"GC=F")
     def test_all_symbols_and_independent_failures(self):
