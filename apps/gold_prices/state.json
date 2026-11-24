@@ -2349,15 +2349,178 @@
       "symbol": "XNGUSD",
       "timestamp": "2026-11-24T20:30:31+00:00",
       "price": 3.60175
+    },
+    {
+      "symbol": "XAUUSD",
+      "timestamp": "2026-11-24T21:00:34+00:00",
+      "price": 3552.0125
+    },
+    {
+      "symbol": "XAGUSD",
+      "timestamp": "2026-11-24T21:00:33+00:00",
+      "price": 40.8
+    },
+    {
+      "symbol": "XPTUSD",
+      "timestamp": "2026-11-24T21:00:22+00:00",
+      "price": 1277.95
+    },
+    {
+      "symbol": "XPDUSD",
+      "timestamp": "2026-11-24T21:00:34+00:00",
+      "price": 854.96
+    },
+    {
+      "symbol": "EURUSD",
+      "timestamp": "2026-11-24T21:00:34+00:00",
+      "price": 1.09651
+    },
+    {
+      "symbol": "GBPUSD",
+      "timestamp": "2026-11-24T21:00:32+00:00",
+      "price": 1.311285
+    },
+    {
+      "symbol": "USDJPY",
+      "timestamp": "2026-11-24T21:00:32+00:00",
+      "price": 159.241
+    },
+    {
+      "symbol": "AUDUSD",
+      "timestamp": "2026-11-24T21:00:32+00:00",
+      "price": 0.66408
+    },
+    {
+      "symbol": "USDCAD",
+      "timestamp": "2026-11-24T21:00:29+00:00",
+      "price": 1.426985
+    },
+    {
+      "symbol": "US30",
+      "timestamp": "2026-11-24T21:00:34+00:00",
+      "price": 50029.95
+    },
+    {
+      "symbol": "USTEC",
+      "timestamp": "2026-11-24T21:00:34+00:00",
+      "price": 26208.3
+    },
+    {
+      "symbol": "US500",
+      "timestamp": "2026-11-24T21:00:34+00:00",
+      "price": 7202.48
+    },
+    {
+      "symbol": "DE30",
+      "timestamp": "2026-11-24T21:00:34+00:00",
+      "price": 25196.55
+    },
+    {
+      "symbol": "USOIL",
+      "timestamp": "2026-11-24T21:00:34+00:00",
+      "price": 81.231
+    },
+    {
+      "symbol": "UKOIL",
+      "timestamp": "2026-11-24T21:00:34+00:00",
+      "price": 88.43
+    },
+    {
+      "symbol": "XNGUSD",
+      "timestamp": "2026-11-24T21:00:29+00:00",
+      "price": 3.60435
     }
   ],
-  "daily_open": {},
+  "daily_open": {
+    "2026-11-25": {
+      "XAUUSD": {
+        "price": 3552.0125,
+        "timestamp": "2026-11-24T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "XAGUSD": {
+        "price": 40.8,
+        "timestamp": "2026-11-24T21:00:33+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "XPTUSD": {
+        "price": 1277.95,
+        "timestamp": "2026-11-24T21:00:22+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "XPDUSD": {
+        "price": 854.96,
+        "timestamp": "2026-11-24T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "EURUSD": {
+        "price": 1.09651,
+        "timestamp": "2026-11-24T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "GBPUSD": {
+        "price": 1.311285,
+        "timestamp": "2026-11-24T21:00:32+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "USDJPY": {
+        "price": 159.241,
+        "timestamp": "2026-11-24T21:00:32+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "AUDUSD": {
+        "price": 0.66408,
+        "timestamp": "2026-11-24T21:00:32+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "USDCAD": {
+        "price": 1.426985,
+        "timestamp": "2026-11-24T21:00:29+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "US30": {
+        "price": 50029.95,
+        "timestamp": "2026-11-24T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "USTEC": {
+        "price": 26208.3,
+        "timestamp": "2026-11-24T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "US500": {
+        "price": 7202.48,
+        "timestamp": "2026-11-24T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "DE30": {
+        "price": 25196.55,
+        "timestamp": "2026-11-24T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "USOIL": {
+        "price": 81.231,
+        "timestamp": "2026-11-24T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "UKOIL": {
+        "price": 88.43,
+        "timestamp": "2026-11-24T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "XNGUSD": {
+        "price": 3.60435,
+        "timestamp": "2026-11-24T21:00:29+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      }
+    }
+  },
   "last_daily_close": null,
   "last_weekly_close": null,
   "sent": {
-    "daily_open": "",
+    "daily_open": "2026-11-25",
     "weekly_open": "",
     "daily_close": ""
   },
-  "last_price_slot": "2026-11-24T20:30:00+00:00"
+  "last_price_slot": "2026-11-24T21:00:00+00:00"
 }
