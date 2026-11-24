@@ -1,45 +1,45 @@
 {
   "sources": {
     "Federal Reserve": {
-      "success_count": 1063,
+      "success_count": 1064,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:22.022006+00:00",
+      "last_checked_utc": "2026-11-24T06:55:18.034956+00:00",
       "last_entries_count": 20,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:22.022006+00:00"
+      "last_success_utc": "2026-11-24T06:55:18.034956+00:00"
     },
     "BLS": {
-      "success_count": 1063,
+      "success_count": 1064,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:22.288370+00:00",
+      "last_checked_utc": "2026-11-24T06:55:18.097243+00:00",
       "last_entries_count": 1,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:22.288370+00:00"
+      "last_success_utc": "2026-11-24T06:55:18.097243+00:00"
     },
     "BEA": {
-      "success_count": 1062,
+      "success_count": 1063,
       "failure_count": 1,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:22.441476+00:00",
+      "last_checked_utc": "2026-11-24T06:55:18.304713+00:00",
       "last_entries_count": 49,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:22.441476+00:00",
+      "last_success_utc": "2026-11-24T06:55:18.304713+00:00",
       "last_failure_utc": "2026-11-20T19:01:33.742129+00:00"
     },
     "European Central Bank": {
-      "success_count": 1063,
+      "success_count": 1064,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:22.798963+00:00",
+      "last_checked_utc": "2026-11-24T06:55:19.409937+00:00",
       "last_entries_count": 15,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:22.798963+00:00"
+      "last_success_utc": "2026-11-24T06:55:19.409937+00:00"
     },
     "Eurostat": {
       "success_count": 262,
@@ -53,24 +53,24 @@
       "last_failure_utc": "2026-11-24T06:01:51.089219+00:00"
     },
     "Bank of England": {
-      "success_count": 1063,
+      "success_count": 1064,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:23.250134+00:00",
+      "last_checked_utc": "2026-11-24T06:55:19.849657+00:00",
       "last_entries_count": 50,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:23.250134+00:00"
+      "last_success_utc": "2026-11-24T06:55:19.849657+00:00"
     },
     "Bank of Japan": {
-      "success_count": 1063,
+      "success_count": 1064,
       "failure_count": 0,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:23.668968+00:00",
+      "last_checked_utc": "2026-11-24T06:55:20.237895+00:00",
       "last_entries_count": 42,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:23.668968+00:00"
+      "last_success_utc": "2026-11-24T06:55:20.237895+00:00"
     },
     "Gold Market": {
       "success_count": 269,
@@ -84,69 +84,69 @@
       "last_failure_utc": "2026-11-24T02:31:47.606751+00:00"
     },
     "Economic Reports": {
-      "success_count": 1036,
+      "success_count": 1037,
       "failure_count": 11,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:24.112967+00:00",
+      "last_checked_utc": "2026-11-24T06:55:20.764947+00:00",
       "last_entries_count": 100,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:24.112967+00:00",
+      "last_success_utc": "2026-11-24T06:55:20.764947+00:00",
       "last_failure_utc": "2026-11-24T02:32:44.789270+00:00"
     },
     "Geopolitical News": {
-      "success_count": 1031,
+      "success_count": 1032,
       "failure_count": 10,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:24.593600+00:00",
+      "last_checked_utc": "2026-11-24T06:55:21.268504+00:00",
       "last_entries_count": 100,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:24.593600+00:00",
+      "last_success_utc": "2026-11-24T06:55:21.268504+00:00",
       "last_failure_utc": "2026-11-24T02:33:08.395360+00:00"
     },
     "Oil Trade and Supply": {
-      "success_count": 974,
+      "success_count": 975,
       "failure_count": 11,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:25.279502+00:00",
-      "last_entries_count": 95,
+      "last_checked_utc": "2026-11-24T06:55:21.768905+00:00",
+      "last_entries_count": 100,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:25.279502+00:00",
+      "last_success_utc": "2026-11-24T06:55:21.768905+00:00",
       "last_failure_utc": "2026-11-24T02:33:57.409681+00:00"
     },
     "Energy Shipping Routes": {
-      "success_count": 960,
+      "success_count": 961,
       "failure_count": 10,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:25.863985+00:00",
-      "last_entries_count": 100,
+      "last_checked_utc": "2026-11-24T06:55:22.206810+00:00",
+      "last_entries_count": 65,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:25.863985+00:00",
+      "last_success_utc": "2026-11-24T06:55:22.206810+00:00",
       "last_failure_utc": "2026-11-24T02:34:27.458522+00:00"
     },
     "Conflict and Security": {
-      "success_count": 958,
+      "success_count": 959,
       "failure_count": 12,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:26.274661+00:00",
-      "last_entries_count": 100,
+      "last_checked_utc": "2026-11-24T06:55:22.606392+00:00",
+      "last_entries_count": 27,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:26.274661+00:00",
+      "last_success_utc": "2026-11-24T06:55:22.606392+00:00",
       "last_failure_utc": "2026-11-24T02:34:52.672253+00:00"
     },
     "Trade and Sanctions": {
-      "success_count": 960,
+      "success_count": 961,
       "failure_count": 10,
       "last_status": "success",
-      "last_checked_utc": "2026-11-24T06:50:26.765554+00:00",
+      "last_checked_utc": "2026-11-24T06:55:23.182878+00:00",
       "last_entries_count": 100,
       "last_mode": "breaking",
       "last_error": null,
-      "last_success_utc": "2026-11-24T06:50:26.765554+00:00",
+      "last_success_utc": "2026-11-24T06:55:23.182878+00:00",
       "last_failure_utc": "2026-11-24T02:35:16.916981+00:00"
     },
     "Forex and Central Banks": {
@@ -183,6 +183,6 @@
       "last_failure_utc": "2026-11-24T02:35:41.894001+00:00"
     }
   },
-  "updated_at_utc": "2026-11-24T06:50:26.765554+00:00",
+  "updated_at_utc": "2026-11-24T06:55:23.182878+00:00",
   "last_mode": "breaking"
 }
