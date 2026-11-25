@@ -43,9 +43,7 @@ jobs:
           GOLD_NEWS_ANALYST_MAX_ITEMS: "2"
         run: python -m apps.gold_news_analyst
       - name: Save analyst delivery state
-        if: success() && env.DRY_RUN != 'true'
-        env:
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+        if: success() && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
