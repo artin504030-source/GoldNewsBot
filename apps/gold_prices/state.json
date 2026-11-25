@@ -5874,6 +5874,76 @@
       "symbol": "XNGUSD",
       "timestamp": "2026-11-25T21:30:26+00:00",
       "price": 3.5787
+    },
+    {
+      "symbol": "XAUUSD",
+      "timestamp": "2026-11-25T21:57:59+00:00",
+      "price": 3588.7435
+    },
+    {
+      "symbol": "XAGUSD",
+      "timestamp": "2026-11-25T21:57:58+00:00",
+      "price": 41.385
+    },
+    {
+      "symbol": "XPTUSD",
+      "timestamp": "2026-11-25T21:57:59+00:00",
+      "price": 1293.64
+    },
+    {
+      "symbol": "XPDUSD",
+      "timestamp": "2026-11-25T21:57:59+00:00",
+      "price": 865.33
+    },
+    {
+      "symbol": "EURUSD",
+      "timestamp": "2026-11-25T21:59:57+00:00",
+      "price": 1.097605
+    },
+    {
+      "symbol": "GBPUSD",
+      "timestamp": "2026-11-25T21:59:57+00:00",
+      "price": 1.31168
+    },
+    {
+      "symbol": "USDJPY",
+      "timestamp": "2026-11-25T21:59:57+00:00",
+      "price": 159.144
+    },
+    {
+      "symbol": "AUDUSD",
+      "timestamp": "2026-11-25T22:00:30+00:00",
+      "price": 0.662745
+    },
+    {
+      "symbol": "USDCAD",
+      "timestamp": "2026-11-25T21:59:40+00:00",
+      "price": 1.421505
+    },
+    {
+      "symbol": "US30",
+      "timestamp": "2026-11-25T21:59:58+00:00",
+      "price": 50207.55
+    },
+    {
+      "symbol": "USTEC",
+      "timestamp": "2026-11-25T21:59:59+00:00",
+      "price": 25959.46
+    },
+    {
+      "symbol": "US500",
+      "timestamp": "2026-11-25T21:59:59+00:00",
+      "price": 7178.1
+    },
+    {
+      "symbol": "DE30",
+      "timestamp": "2026-11-25T21:59:59+00:00",
+      "price": 25113.25
+    },
+    {
+      "symbol": "USOIL",
+      "timestamp": "2026-11-25T21:58:59+00:00",
+      "price": 83.761
     }
   ],
   "daily_open": {
@@ -6043,97 +6113,97 @@
     }
   },
   "last_daily_close": {
-    "price": 3555.9325,
+    "price": 3588.7435,
     "prices": {
       "XAUUSD": {
-        "price": 3555.9325,
-        "timestamp": "2026-11-24T21:57:59+00:00",
+        "price": 3588.7435,
+        "timestamp": "2026-11-25T21:57:59+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "XAGUSD": {
-        "price": 40.905,
-        "timestamp": "2026-11-24T21:57:57+00:00",
+        "price": 41.385,
+        "timestamp": "2026-11-25T21:57:58+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "XPTUSD": {
-        "price": 1275.59,
-        "timestamp": "2026-11-24T21:57:58+00:00",
+        "price": 1293.64,
+        "timestamp": "2026-11-25T21:57:59+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "XPDUSD": {
-        "price": 856.69,
-        "timestamp": "2026-11-24T21:57:26+00:00",
+        "price": 865.33,
+        "timestamp": "2026-11-25T21:57:59+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "EURUSD": {
-        "price": 1.096565,
-        "timestamp": "2026-11-24T21:59:57+00:00",
+        "price": 1.097605,
+        "timestamp": "2026-11-25T21:59:57+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "GBPUSD": {
-        "price": 1.311495,
-        "timestamp": "2026-11-24T21:59:57+00:00",
+        "price": 1.31168,
+        "timestamp": "2026-11-25T21:59:57+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "USDJPY": {
-        "price": 159.2595,
-        "timestamp": "2026-11-24T21:59:54+00:00",
+        "price": 159.144,
+        "timestamp": "2026-11-25T21:59:57+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "AUDUSD": {
-        "price": 0.664055,
-        "timestamp": "2026-11-24T21:59:57+00:00",
+        "price": 0.662745,
+        "timestamp": "2026-11-25T22:00:30+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "USDCAD": {
-        "price": 1.42697,
-        "timestamp": "2026-11-24T21:59:47+00:00",
+        "price": 1.421505,
+        "timestamp": "2026-11-25T21:59:40+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "US30": {
-        "price": 50012.45,
-        "timestamp": "2026-11-24T21:59:59+00:00",
+        "price": 50207.55,
+        "timestamp": "2026-11-25T21:59:58+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "USTEC": {
-        "price": 26219.93,
-        "timestamp": "2026-11-24T21:59:59+00:00",
+        "price": 25959.46,
+        "timestamp": "2026-11-25T21:59:59+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "US500": {
-        "price": 7199.97,
-        "timestamp": "2026-11-24T21:59:59+00:00",
+        "price": 7178.1,
+        "timestamp": "2026-11-25T21:59:59+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "DE30": {
-        "price": 25189.55,
-        "timestamp": "2026-11-24T21:59:59+00:00",
+        "price": 25113.25,
+        "timestamp": "2026-11-25T21:59:59+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "USOIL": {
-        "price": 81.455,
-        "timestamp": "2026-11-24T21:58:56+00:00",
+        "price": 83.761,
+        "timestamp": "2026-11-25T21:58:59+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "UKOIL": {
-        "price": 88.503,
-        "timestamp": "2026-11-24T21:30:27+00:00",
+        "price": 90.87,
+        "timestamp": "2026-11-25T21:30:30+00:00",
         "source": "آخرین قیمت معتبر ذخیره‌شده"
       },
       "XNGUSD": {
-        "price": 3.6016,
-        "timestamp": "2026-11-24T21:30:27+00:00",
+        "price": 3.5787,
+        "timestamp": "2026-11-25T21:30:26+00:00",
         "source": "آخرین قیمت معتبر ذخیره‌شده"
       }
     },
-    "timestamp": "2026-11-24T22:00:45.338078+00:00",
-    "date": "2026-11-24"
+    "timestamp": "2026-11-25T22:00:33.595330+00:00",
+    "date": "2026-11-25"
   },
   "last_weekly_close": null,
   "sent": {
     "daily_open": "2026-11-26",
     "weekly_open": "",
-    "daily_close": "2026-11-24"
+    "daily_close": "2026-11-25"
   },
-  "last_price_slot": "2026-11-25T21:30:00+00:00"
+  "last_price_slot": "2026-11-25T22:00:00+00:00"
 }
