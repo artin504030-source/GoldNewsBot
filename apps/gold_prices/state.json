@@ -5944,6 +5944,36 @@
       "symbol": "USOIL",
       "timestamp": "2026-11-25T21:58:59+00:00",
       "price": 83.761
+    },
+    {
+      "symbol": "EURUSD",
+      "timestamp": "2026-11-25T22:30:28+00:00",
+      "price": 1.097525
+    },
+    {
+      "symbol": "GBPUSD",
+      "timestamp": "2026-11-25T22:30:28+00:00",
+      "price": 1.311455
+    },
+    {
+      "symbol": "USDJPY",
+      "timestamp": "2026-11-25T22:30:28+00:00",
+      "price": 159.153
+    },
+    {
+      "symbol": "AUDUSD",
+      "timestamp": "2026-11-25T22:30:24+00:00",
+      "price": 0.662565
+    },
+    {
+      "symbol": "USDCAD",
+      "timestamp": "2026-11-25T22:30:28+00:00",
+      "price": 1.42135
+    },
+    {
+      "symbol": "XAUUSD",
+      "timestamp": "2026-11-25T22:30:28.371000+00:00",
+      "price": 3588.399902
     }
   ],
   "daily_open": {
@@ -6205,5 +6235,5 @@
     "weekly_open": "",
     "daily_close": "2026-11-25"
   },
-  "last_price_slot": "2026-11-25T22:00:00+00:00"
+  "last_price_slot": "2026-11-25T22:30:00+00:00"
 }
