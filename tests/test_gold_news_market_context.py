@@ -20,7 +20,7 @@ class MarketContextTests(unittest.TestCase):
     def test_treasury_yield_is_not_divided_by_ten(self):
         item = _fetch_yahoo("^TNX", FakeSession(), 1)
         self.assertAlmostEqual(item["value"], 4.85, places=2)
-        self.assertIsNotNone(item["change_pct"])
+        self.assertAlmostEqual(item["change_points"], 0.05, places=2)
         self.assertEqual(item["unit"], "yield_percent")
 
 if __name__ == "__main__":
