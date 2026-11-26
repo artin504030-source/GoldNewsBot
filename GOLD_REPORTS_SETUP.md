@@ -4,7 +4,7 @@ This is a separate bot implementation. It does not import, trigger, or modify Go
 
 ## GitHub secrets
 - `GOLD_REPORTS_BOT_TOKEN`: token from a dedicated Telegram bot created for Gold Reports.
-- `CHANNEL_ID`: destination channel ID. The dedicated bot must be an administrator with permission to post and pin messages.
+- `GOLD_REPORTS_CHANNEL_ID`: destination channel ID. The dedicated bot must be an administrator with permission to post and pin messages.
 
 ## Automation
 - Daily at 09:00 Asia/Kabul: Saturday = current-month calendar, Sunday = upcoming-week outlook, Monday-Friday = today's events.
