@@ -52,6 +52,18 @@ def get_bars(session=None):
     return points
 
 
+def expected_gold_direction(event_name, forecast, previous):
+    name = (event_name or "").lower()
+    f, p = numeric(forecast), numeric(previous)
+    if f is None or p is None or f == p:
+        return None
+    if any(x in name for x in ("cpi", "inflation", "pce", "تورم", "payroll", "employment", "اشتغال")):
+        return "down" if f > p else "up"
+    if any(x in name for x in ("unemployment", "بیکاری")):
+        return "down" if f < p else "up"
+    return None
+
+
 def classify_pre(points, event_dt, forecast, previous, event_name):
     now = datetime.now(timezone.utc)
     usable = [(t, p) for t, p in points if t <= now]
@@ -62,13 +74,23 @@ def classify_pre(points, event_dt, forecast, previous, event_name):
     if not start:
         return "اطلاعات کافی برای تشخیص وجود ندارد", "بازه مقایسه ۱۲ ساعته در داده‌های دریافتی موجود نیست."
     change = (end_p / start[1] - 1) * 100
-    abs_move = abs(change)
-    if abs_move < 0.20:
-        return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", f"تغییر ۱۲ ساعته قرارداد آتی طلا حدود {change:+.2f}% بوده؛ این داده به‌تنهایی ثابت نمی‌کند خبر پیش‌خور نشده باشد."
-    if abs_move < 0.55:
-        return "تا حدی پیش‌خور شده؛ شواهد محدود", f"تغییر ۱۲ ساعته حدود {change:+.2f}% است؛ اما بدون داده مستقل از انتظارات بازار، نتیجه قطعی نیست."
-    return "احتمال پیش‌خورشدن بخشی از انتظارات؛ تأییدنشده", f"حرکت ۱۲ ساعته حدود {change:+.2f}% بوده است. برای اثبات پیش‌خورشدن باید با تغییر انتظارات نرخ بهره/دلار و خبرهای هم‌زمان تطبیق داده شود."
-
+    expected = expected_gold_direction(event_name, forecast, previous)
+    if expected is None:
+        return "اطلاعات کافی برای تشخیص وجود ندارد", (
+            f"تغییر ۱۲ ساعته طلا {change:+.2f}% بوده؛ اما از پیش‌بینی و عدد قبلی، جهت مورد انتظار این رویداد قابل استنتاج مطمئن نیست."
+        )
+    aligned = (change < 0 and expected == "down") or (change > 0 and expected == "up")
+    if abs(change) < 0.20:
+        return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", (
+            f"تغییر ۱۲ ساعته طلا {change:+.2f}% بوده و حرکت هم‌جهت معناداری با اثر مورد انتظار دیده نمی‌شود؛ این به‌تنهایی نبود پیش‌خورشدن را ثابت نمی‌کند."
+        )
+    if aligned:
+        return "تا حدی پیش‌خور شده؛ شواهد محدود", (
+            f"تغییر ۱۲ ساعته طلا {change:+.2f}% و هم‌جهت با اثر معمولِ مورد انتظار از ارقام پیش‌بینی/قبلی است. این فقط قرینه است، نه اثبات؛ برای تأیید به داده انتظارات بازار، دلار و بازده اوراق نیاز است."
+        )
+    return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", (
+        f"تغییر ۱۲ ساعته طلا {change:+.2f}% با جهت معمولِ مورد انتظار از ارقام پیش‌بینی/قبلی هم‌راستا نیست. خبر ممکن است از مسیر دیگری قیمت‌گذاری شده باشد؛ داده تکمیلی لازم است."
+    )
 
 def classify_post(points, event_dt, actual, forecast):
     if not event_dt:
