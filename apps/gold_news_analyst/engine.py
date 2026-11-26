@@ -131,8 +131,8 @@ def analyse(item, article_text="", market_snapshot=None):
     xau = m.get("XAUUSD", {})
     dollar_up = (dxy.get("change_pct") is not None and float(dxy["change_pct"]) > 0.15)
     dollar_down = (dxy.get("change_pct") is not None and float(dxy["change_pct"]) < -0.15)
-    yield_up = (us10y.get("change_pct") is not None and float(us10y["change_pct"]) > 0.02)
-    yield_down = (us10y.get("change_pct") is not None and float(us10y["change_pct"]) < -0.02)
+    yield_up = (us10y.get("change_pct") is not None and float(us10y["change_pct"]) > 0.5)
+    yield_down = (us10y.get("change_pct") is not None and float(us10y["change_pct"]) < -0.5)
     market_headwind = dollar_up or yield_up
     market_support = dollar_down or yield_down
     if market_headwind and market_support:
