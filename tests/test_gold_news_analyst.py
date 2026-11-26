@@ -25,7 +25,9 @@ class AnalystTests(unittest.TestCase):
     def test_fingerprint_stable(self):
         item = self.item("Headline"); self.assertEqual(fingerprint(item), fingerprint(item.copy()))
     def test_state_saved_after_each_successful_send(self):
-        one, two = self.item("First"), self.item("Second")
+        now = datetime.now(timezone.utc)
+        one = self.item("First", published_utc=(now - timedelta(seconds=1)).isoformat())
+        two = self.item("Second", published_utc=(now - timedelta(seconds=2)).isoformat())
         with TemporaryDirectory() as tmp:
             archive = Path(tmp)/"archive.json"; state_path = Path(tmp)/"state.json"
             archive.write_text(__import__("json").dumps([one,two]), encoding="utf-8")
