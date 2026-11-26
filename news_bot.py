@@ -414,6 +414,9 @@ def make_message(source, entry):
 
     article_result = fetch_and_classify_article(link, title, raw_summary, preserve_partial=True)
     article_text = article_result["body"]
+    # Keep the fetched publisher text available to main() for the news archive.
+    # The Analyst workflow reads this archive after the News Bot run completes.
+    entry["_gold_news_article_text"] = article_text
     full_article = article_result["full_article"]
     publisher_link = article_result.get("url") or link
 
@@ -516,7 +519,7 @@ def main():
                     stop_sending = True; break
                 seen.add(uid); save_seen(seen)
                 published_dt = entry_datetime(entry)
-                archive_news(source, title, article_text or summary, entry.get("link", ""), published_dt.isoformat() if published_dt else "", importance,
+                archive_news(source, title, entry.get("_gold_news_article_text") or summary, entry.get("link", ""), published_dt.isoformat() if published_dt else "", importance,
                              telegram_message_id=sent.get("message_id"), telegram_chat_id=sent.get("chat_id"))
                 archive = load_archive(); sent_count += 1
                 print("News sent successfully:", title)
