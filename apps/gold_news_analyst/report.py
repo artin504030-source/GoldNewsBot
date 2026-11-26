@@ -45,19 +45,18 @@ def render(item, article=None, market_snapshot=None):
         f"اطمینان: {escape(a['confidence'])}",
         "شرط بازبینی: " + escape(a["invalidate"]),
     ]
-    if a["market_lines"]:
-        lines += ["", "<b>داده‌های بین‌بازاری (با برچسب منبع/تأخیر)</b>"]
-        lines += ["• " + escape(x) for x in a["market_lines"]]
+    lines += ["", "<b>نمادهای مرتبط و اثر احتمالی</b>"]
+    if a.get("symbol_impacts"):
+        for impact in a["symbol_impacts"]:
+            lines.append("• <b>" + escape(impact["symbol"]) + "</b> — " + escape(impact["impact"]) + ": " + escape(impact["reason"]))
     else:
-        lines += ["", "داده بین‌بازاری: در این اجرا دریافت نشد؛ هیچ واکنش زنده‌ای فرض نشده است."]
-    if a["market_warnings"]:
-        lines += ["هشدار داده: " + escape("؛ ".join(a["market_warnings"]))]
+        lines.append("نماد مشخصی با ارتباط قابل‌دفاع از متن خبر شناسایی نشد؛ از حدس‌زدن اثر خودداری شد.")
     if article.get("error"):
         lines += ["وضعیت دریافت مقاله: " + escape(str(article["error"])[:220])]
     lines += [
         "",
         "⚠️ تعداد منابع ثبت‌شده در آرشیو، تأیید ناشران مستقل نیست. عنوان خبر به‌تنهایی سند کافی برای نتیجه‌گیری نیست.",
-        "این تحلیل قاعده‌محور و توضیحی است؛ داده‌های Yahoo ممکن است تأخیردار باشند و داده روزانه با قیمت لحظه‌ای یکسان نیست.",
+        "این تحلیل قاعده‌محور و توضیحی است؛ اثرهای نمادها سناریویی‌اند و بدون تأیید قیمت/بازار، سیگنال قطعی محسوب نمی‌شوند.",
         "سیگنال ورود یا توصیه معامله نیست.",
     ]
     if safe_link:
