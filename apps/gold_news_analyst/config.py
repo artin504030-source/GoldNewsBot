@@ -12,6 +12,7 @@ class Settings:
     min_relevance: int = 25
     max_items: int = 2
     dry_run: bool = False
+    article_fetch: bool = True
 
     @classmethod
     def from_env(cls):
@@ -25,4 +26,5 @@ class Settings:
             max(1, min(168, int(os.getenv("GOLD_NEWS_ANALYST_MAX_AGE_HOURS", "24")))),
             max(0, min(100, int(os.getenv("GOLD_NEWS_ANALYST_MIN_RELEVANCE", "25")))),
             max(1, min(5, int(os.getenv("GOLD_NEWS_ANALYST_MAX_ITEMS", "2")))),
-            os.getenv("DRY_RUN", "false").lower() == "true")
+            os.getenv("DRY_RUN", "false").lower() == "true",
+            os.getenv("GOLD_NEWS_ANALYST_FETCH_ARTICLES", "true").lower() == "true")
