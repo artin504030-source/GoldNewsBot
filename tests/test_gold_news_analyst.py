@@ -157,6 +157,17 @@ class AnalystTests(unittest.TestCase):
             self.assertEqual(sent_messages, ["News sent in this run"])
             self.assertEqual(__import__("json").loads(state_path.read_text(encoding="utf-8"))["sent"], [fingerprint(new)])
 
+
+    def test_send_replies_to_original_news_message_when_message_id_exists(self):
+        item = self.item("Core CPI above expectations", telegram_message_id=12345, telegram_chat_id="@goldchannel")
+        with patch.object(analyst_main.requests, "post") as post:
+            response = post.return_value
+            response.json.return_value = {"ok": True, "result": {"message_id": 67890}}
+            response.raise_for_status.return_value = None
+            analyst_main.send("token", "@goldchannel", "analysis", reply_to_message_id=item["telegram_message_id"])
+            self.assertEqual(post.call_args.kwargs["data"]["reply_to_message_id"], 12345)
+            self.assertTrue(post.call_args.kwargs["data"]["allow_sending_without_reply"])
+
     def test_dry_run_does_not_send_or_persist_state(self):
         item = self.item("Dry run headline")
         with TemporaryDirectory() as tmp:
