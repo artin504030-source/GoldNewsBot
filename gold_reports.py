@@ -237,7 +237,7 @@ def send_long_telegram(message, limit=3500):
     lines = message.splitlines()
     chunks, current = [], ""
     for line in lines:
-        candidate = (current + "\\n" + line).strip() if current else line
+        candidate = (current + "\n" + line).strip() if current else line
         if len(candidate) > limit and current:
             chunks.append(current)
             current = line
