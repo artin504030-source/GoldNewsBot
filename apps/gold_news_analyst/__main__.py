@@ -4,7 +4,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 import requests
 from .config import Settings
-from .engine import eligible, fingerprint
+from .engine import eligible, fingerprint, parse_time
 from .report import render
 
 def load_json(path, default):
@@ -61,9 +61,22 @@ def main():
     archive = load_json(cfg.archive_path, []); state = load_json(cfg.state_path, {"sent": []})
     if not isinstance(archive, list) or not isinstance(state, dict): raise RuntimeError("Invalid archive/state structure")
     sent = set(state.get("sent", []))
-    candidates = [x for x in archive if isinstance(x, dict) and eligible(x, now, cfg.max_age_hours, cfg.min_relevance) and fingerprint(x) not in sent]
+    # For workflow_run events, analyse only items archived by the News Bot run
+    # that just completed. archive_news() is called only after Telegram delivery.
+    triggered_after = parse_time(os.getenv("GOLD_NEWS_ANALYST_TRIGGERED_AFTER", ""))
+    candidates = [
+        x for x in archive
+        if isinstance(x, dict)
+        and eligible(x, now, cfg.max_age_hours, cfg.min_relevance)
+        and fingerprint(x) not in sent
+        and (
+            triggered_after is None
+            or (parse_time(x.get("archived_at_utc")) is not None
+                and parse_time(x.get("archived_at_utc")) >= triggered_after)
+        )
+    ]
     candidates.sort(key=lambda x: x.get("published_utc", ""), reverse=True); selected = candidates[:cfg.max_items]
-    print(f"archive={len(archive)} eligible={len(candidates)} selected={len(selected)} dry_run={cfg.dry_run}")
+    print(f"archive={len(archive)} eligible={len(candidates)} selected={len(selected)} dry_run={cfg.dry_run} triggered_after={triggered_after.isoformat() if triggered_after else 'manual/backfill'}")
     if not selected:
         print("No new eligible news items.")
         return
