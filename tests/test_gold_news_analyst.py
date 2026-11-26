@@ -40,4 +40,14 @@ class AnalystTests(unittest.TestCase):
             with patch.object(analyst_main.Settings,"from_env",return_value=cfg), patch.object(analyst_main,"send",side_effect=fake_send):
                 with self.assertRaises(RuntimeError): analyst_main.main()
             self.assertEqual(__import__("json").loads(state_path.read_text(encoding="utf-8"))["sent"],[fingerprint(one)])
+    def test_dry_run_does_not_send_or_persist_state(self):
+        item = self.item("Dry run headline")
+        with TemporaryDirectory() as tmp:
+            archive = Path(tmp)/"archive.json"; state_path = Path(tmp)/"state.json"
+            archive.write_text(__import__("json").dumps([item]), encoding="utf-8")
+            cfg = analyst_main.Settings("token","channel",str(archive),str(state_path),24,0,5,True)
+            with patch.object(analyst_main.Settings,"from_env",return_value=cfg), patch.object(analyst_main,"send") as send_mock:
+                analyst_main.main()
+            send_mock.assert_not_called()
+            self.assertFalse(state_path.exists())
 if __name__ == "__main__": unittest.main()
