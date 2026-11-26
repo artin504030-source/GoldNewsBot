@@ -343,6 +343,19 @@ def event_message(event, pre=True):
               "", "<b>Gold Admin</b>", "<b>Reports Admin</b>"]
     return "\n".join(lines)
 
+def test_pre_news_message(events, now):
+    # Use the next upcoming Forex Factory calendar event, prioritizing high impact.
+    upcoming = [e for e in events
+                if datetime.fromisoformat(e["datetime_utc"]) > now.astimezone(ZoneInfo("UTC"))]
+    if not upcoming:
+        raise RuntimeError("No upcoming Forex Factory event is available for a pre-release test.")
+    upcoming.sort(key=lambda e: (
+        0 if e["impact"] == "high" else 1,
+        datetime.fromisoformat(e["datetime_utc"])
+    ))
+    message = event_message(upcoming[0], pre=True)
+    return message.replace("پیش‌تحلیل رویداد اقتصادی", "🧪 پیام آزمایشی | پیش‌تحلیل قبل از انتشار", 1)
+
 def test_news_message(events):
     # Sample strictly from an event listed in the Forex Factory economic calendar.
     event = next((e for e in events if "tokyo core cpi" in e["title"].lower()), None)
