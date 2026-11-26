@@ -86,14 +86,14 @@ def session_status_text(now, holiday_data, ff_events):
         if event.get("all_day") and any(word in event["title"].lower() for word in ("holiday", "bank holiday")):
             country = {"AUD": "AU", "JPY": "JP", "GBP": "GB", "USD": "US"}.get(event["currency"].upper())
             if country:
-                ff_holidays.setdefault(country, []).append(event["title"])
+                ff_holidays.setdefault(country, []).append({"date": event["date"], "title": event["title"]})
     for session in SESSIONS:
         zone = ZoneInfo(session["zone"])
         local_date = now.astimezone(zone).date()
         open_kabul, close_kabul = get_session_times(session, now)
         holiday = next((h for h in holiday_data.get(session["country"], [])
                         if h.get("date") == local_date.isoformat()), None)
-        ff_holiday_reason = "; ".join(sorted(set(ff_holidays.get(session["country"], []))))
+        ff_holiday_reason = "; ".join(sorted({h["title"] for h in ff_holidays.get(session["country"], []) if h["date"] == local_date.isoformat()}))
         if local_date.weekday() >= 5:
             lines.append(f"🔴 <b>سشن {session['name']}: تعطیل آخر هفته</b> — بازار فارکس در تعطیلی هفتگی است.")
             lines.append(f"زمان عادی بازگشایی: {open_kabul:%H:%M} | زمان عادی بسته‌شدن: {close_kabul:%H:%M} کابل")
@@ -112,13 +112,22 @@ def session_status_text(now, holiday_data, ff_events):
     lines.append("ساعت‌ها بر اساس ساعات متداول بازار فارکس و منطقه زمانی محلی هر مرکز محاسبه شده‌اند؛ تعطیلی‌های رسمی در صورت موجودبودن داده منبع اعمال می‌شوند.")
     return "\n".join(lines)
 
-def monitor_session_boundaries(state, now, holiday_data):
+def monitor_session_boundaries(state, now, holiday_data, ff_events):
     sent = state.setdefault("session_notices", {})
     utc_now = now.astimezone(ZoneInfo("UTC"))
     for session in SESSIONS:
         zone = ZoneInfo(session["zone"])
         local_date = now.astimezone(zone).date()
         if local_date.weekday() >= 5:
+            continue
+        currency = {"AU": "AUD", "JP": "JPY", "GB": "GBP", "US": "USD"}.get(session["country"])
+        bank_holiday = any(
+            e.get("all_day") and e.get("date") == local_date.isoformat()
+            and e.get("currency", "").upper() == currency
+            and "holiday" in e.get("title", "").lower()
+            for e in ff_events
+        )
+        if bank_holiday:
             continue
         opening, closing = get_session_times(session, now)
         for kind, boundary, verb in (("open", opening, "باز شد"), ("close", closing, "بسته شد")):
@@ -422,7 +431,7 @@ def main():
         publish_scheduled_report(events, state, now, holiday_data)
     else:
         monitor_events(events, state, now)
-        monitor_session_boundaries(state, now, holiday_data)
+        monitor_session_boundaries(state, now, holiday_data, events)
     save_state(state)
 
 if __name__ == "__main__":
