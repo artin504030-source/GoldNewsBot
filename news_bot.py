@@ -359,6 +359,7 @@ def send_telegram(message):
         return False
 
     parts = _telegram_parts(message)
+    first_message_id = None
     for part_number, part in enumerate(parts, start=1):
         last_error = None
         delivered = False
@@ -389,6 +390,8 @@ def send_telegram(message):
                 response.raise_for_status()
                 if not result.get("ok"):
                     raise RuntimeError(str(result))
+                if first_message_id is None:
+                    first_message_id = (result.get("result") or {}).get("message_id")
                 delivered = True
                 break
             except requests.RequestException as error:
@@ -401,7 +404,7 @@ def send_telegram(message):
             raise TelegramRateLimitError(f"Telegram delivery failed for part {part_number}.")
         if part_number < len(parts):
             time.sleep(0.4)
-    return True
+    return {"message_id": first_message_id, "chat_id": CHANNEL_ID}
 
 
 def make_message(source, entry):
