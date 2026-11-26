@@ -156,7 +156,7 @@ def _symbol_impacts(text, labels, hawkish, dovish, above, below, risk_off, risk_
             add(symbol, score, f"اثر نسبی خبر بر {base} در برابر {quote}")
 
     macro_gold = bool(set(labels) & (macro_labels | {
-        "تعرفه و تجارت", "ژئوپلیتیک و امنیت", "بانک‌ها و بازار مالی", "طلا و فلزات گران‌بها"
+        "تعرفه و تجارت", "ژئوپلیتیک و امنیت", "نفت و انرژی", "بانک‌ها و بازار مالی", "طلا و فلزات گران‌بها"
     }))
     if macro_gold and not company:
         gold_score = 0
