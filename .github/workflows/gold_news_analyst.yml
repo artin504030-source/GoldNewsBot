@@ -8,6 +8,7 @@ on:
   workflow_run:
     workflows:
       - "Gold News Bot"
+      - "Gold News Breaking Monitor"
     types:
       - completed
   workflow_dispatch:
@@ -27,7 +28,7 @@ concurrency:
 
 jobs:
   analyse:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'schedule')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
