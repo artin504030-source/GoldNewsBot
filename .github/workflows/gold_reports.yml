@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "daily report or event monitor"
+        description: "daily report, event monitor, or sample news"
         required: true
         default: "daily"
         type: choice
         options:
           - daily
           - monitor
+          - test_news
   schedule:
     # 09:00 Asia/Kabul (UTC+4:30), every day; Python chooses monthly/weekly/daily report by weekday.
     - cron: "30 4 * * 0-6"
