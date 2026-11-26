@@ -101,7 +101,7 @@ def process_update(update):
         with open(chart_path, "rb") as photo:
             response = requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-                data={"chat_id": CHAT_ID, "reply_to_message_id": reply["message_id"],
+                data={"chat_id": CHAT_ID, "reply_to_message_id": msg_id,
                       "caption": escape(chart_note), "parse_mode": "HTML"},
                 files={"photo": photo}, timeout=45,
             )
