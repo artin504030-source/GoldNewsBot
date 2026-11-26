@@ -35,6 +35,7 @@ jobs:
         env:
           GOLD_NEWS_ANALYST_BOT_TOKEN: ${{ secrets.GOLD_NEWS_ANALYST_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
           GOLD_NEWS_ANALYST_MAX_AGE_HOURS: "24"
           GOLD_NEWS_ANALYST_MIN_RELEVANCE: "25"
