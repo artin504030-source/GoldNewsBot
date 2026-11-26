@@ -48,6 +48,8 @@ def get_calendar(month_date=None):
     response = requests.get(url, headers=UA, timeout=25)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
+    tz_match = re.search(r"Calendar Time Zone:\\s*([A-Za-z_]+/[A-Za-z_]+)", soup.get_text(" ", strip=True))
+    calendar_tz = ZoneInfo(tz_match.group(1)) if tz_match else ZoneInfo("UTC")
     events = []
     current_day = None
     for row in soup.select("tr.calendar__row"):
@@ -63,14 +65,14 @@ def get_calendar(month_date=None):
         currency = clean((row.select_one(".calendar__currency") or row).get_text(" ", strip=True))
         impact_el = row.select_one(".calendar__impact span")
         impact = clean(" ".join(impact_el.get("class", [])) if impact_el else "")
-        impact = "high" if "high" in impact.lower() else ("medium" if "medium" in impact.lower() else "low")
+        impact = "high" if "red" in impact.lower() else ("medium" if "ora" in impact.lower() else ("low" if "yel" in impact.lower() else "low"))
         time_text = clean((row.select_one(".calendar__time") or row).get_text(" ", strip=True))
         actual = clean((row.select_one(".calendar__actual") or row).get_text(" ", strip=True))
         forecast = clean((row.select_one(".calendar__forecast") or row).get_text(" ", strip=True))
         previous = clean((row.select_one(".calendar__previous") or row).get_text(" ", strip=True))
         if not title or title.lower() in ("all day", "tentative"):
             continue
-        event_dt = parse_ff_time(current_day, time_text)
+        event_dt = parse_ff_time(current_day, time_text, calendar_tz)
         if not event_dt:
             continue
         events.append({
@@ -95,7 +97,7 @@ def parse_ff_date(text, year):
             pass
     return None
 
-def parse_ff_time(day, text):
+def parse_ff_time(day, text, calendar_tz):
     text = clean(text).lower()
     if not text or text in ("all day", "tentative", "day"):
         return None
@@ -106,7 +108,7 @@ def parse_ff_time(day, text):
             t = datetime.strptime(text, "%I%p").time()
         except ValueError:
             return None
-    return datetime.combine(day, t, LONDON)
+    return datetime.combine(day, t, calendar_tz)
 
 def analyst_sources(event):
     # Google News RSS is used as a discovery layer; each item retains its publisher and original link.
