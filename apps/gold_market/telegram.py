@@ -31,7 +31,7 @@ def _telegram_lines(report: str) -> list[str]:
         "<b>Gold Channel | XAU</b>",
         "",
         "<b>عنوان:</b>",
-        escape(title, quote=True),
+        f"<b>{escape(title, quote=True)}</b>" if title in SECTION_HEADINGS else escape(title, quote=True),
         "",
         "<b>متن:</b>",
     ]
