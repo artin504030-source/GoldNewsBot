@@ -63,9 +63,17 @@ def _market_context(snapshot):
         status = item.get("status", "UNKNOWN")
         age = item.get("age_minutes")
         change = item.get("change_pct")
-        detail = f"{key}={value} ({status}"
+        change_points = item.get("change_points")
+        unit = item.get("unit", "")
+        source = item.get("source", "منبع نامشخص")
+        observed = item.get("observed_utc", "")
+        detail = f"{key}={value} {unit} ({status}، منبع: {source}"
         if age is not None: detail += f"، عمر داده {age} دقیقه"
-        if change is not None: detail += f"، تغییر حدود ۲۴ ساعت {change}%"
+        if key in ("US10Y", "US10Y_REAL") and change_points is not None:
+            detail += f"، تغییر بازده {change_points:+} واحد درصد"
+        elif change is not None:
+            detail += f"، تغییر حدود ۲۴ ساعت {change}%"
+        if observed: detail += f"، زمان مشاهده {observed}"
         detail += ")"
         lines.append(detail)
         if status not in ("LIVE", "DELAYED", "DAILY"): warnings.append(f"{key}: وضعیت داده {status}")
@@ -189,11 +197,21 @@ def analyse(item, article_text="", market_snapshot=None):
     dxy = m.get("DXY", {})
     real_yield = m.get("US10Y_REAL", {})
     nominal_yield = m.get("US10Y", {})
-    yield_data = real_yield if real_yield.get("status") == "DAILY" else nominal_yield
-    dollar_up = dxy.get("change_pct") is not None and float(dxy["change_pct"]) > 0.15
-    dollar_down = dxy.get("change_pct") is not None and float(dxy["change_pct"]) < -0.15
-    yield_up = yield_data.get("change_pct") is not None and float(yield_data["change_pct"]) > 0.5
-    yield_down = yield_data.get("change_pct") is not None and float(yield_data["change_pct"]) < -0.5
+    # Ignore stale/unavailable quotes when deriving directional confirmation.
+    dxy_usable = dxy.get("status") in ("LIVE", "DELAYED")
+    dollar_change = dxy.get("change_pct") if dxy_usable else None
+    if real_yield.get("status") == "DAILY":
+        yield_data = real_yield
+    elif nominal_yield.get("status") in ("LIVE", "DELAYED"):
+        yield_data = nominal_yield
+    else:
+        yield_data = {}
+    yield_change_points = yield_data.get("change_points")
+    dollar_up = dollar_change is not None and float(dollar_change) > 0.15
+    dollar_down = dollar_change is not None and float(dollar_change) < -0.15
+    # Treasury/TIPS yields are quoted in percent; use percentage-point (basis-point) deltas.
+    yield_up = yield_change_points is not None and float(yield_change_points) >= 0.05
+    yield_down = yield_change_points is not None and float(yield_change_points) <= -0.05
     market_headwind = dollar_up or yield_up
     market_support = dollar_down or yield_down
     if market_headwind and market_support:
