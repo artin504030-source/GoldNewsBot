@@ -170,8 +170,13 @@ def get_calendar(month_date=None):
     response = requests.get(url, headers=UA, timeout=25)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
-    tz_match = re.search(r"Calendar Time Zone:\s*([A-Za-z_]+/[A-Za-z_]+)", soup.get_text(" ", strip=True))
-    calendar_tz = ZoneInfo(tz_match.group(1)) if tz_match else ZoneInfo("UTC")
+    tz_text = soup.get_text(" ", strip=True)
+    tz_match = re.search(r"Calendar Time Zone:\s*([A-Za-z_]+/[A-Za-z_ ]+)", tz_text)
+    tz_name = tz_match.group(1).strip().replace(" ", "_") if tz_match else "UTC"
+    try:
+        calendar_tz = ZoneInfo(tz_name)
+    except Exception:
+        calendar_tz = ZoneInfo("UTC")
     events = []
     current_day = None
     for row in soup.select("tr.calendar__row"):
