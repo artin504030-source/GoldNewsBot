@@ -412,30 +412,52 @@ def make_message(source, entry):
     published_dt = entry_datetime(entry)
     kabul_published = kabul_time(published_dt) if published_dt else clean_text(entry.get("published", "زمان نامشخص"))
 
-    article_result = fetch_and_classify_article(link, title, raw_summary)
+    article_result = fetch_and_classify_article(link, title, raw_summary, preserve_partial=True)
     article_text = article_result["body"]
     full_article = article_result["full_article"]
+    publisher_link = article_result.get("url") or link
+
+    source_info = entry.get("source")
+    if isinstance(source_info, dict):
+        publisher_name = source_info.get("title") or source_info.get("name")
+    else:
+        publisher_name = getattr(source_info, "title", None) or source_info
+    if not publisher_name:
+        title_parts = title.rsplit(" - ", 1)
+        publisher_name = title_parts[-1] if len(title_parts) == 2 else source
+    publisher_name = clean_text(str(publisher_name or source))
 
     persian_title = translate_to_persian(title)
     time.sleep(TRANSLATION_DELAY)
-    persian_article = translate_to_persian(article_text) if article_text else "متن کامل خبر از منبع قابل دریافت نبود."
+    persian_article = translate_to_persian(article_text) if article_text else "متن خبر از ناشر قابل دریافت نبود."
     article_status = (
-        "متن خبر از وب‌سایت منبع دریافت شد."
+        ""
         if full_article
-        else "⚠️ وب‌سایت متن کامل را در دسترس نگذاشت؛ متن زیر فقط محتوای موجود در فید خبری است و ممکن است کامل نباشد."
+        else "⚠️ متن کامل از ناشر در دسترس نبود؛ متن موجود از خبر ارسال شده است و ممکن است ناقص باشد."
     )
+    body_lines = [
+        f"📅 تاریخ انتشار: {kabul_published}",
+        "",
+        "🔎 متن خبر:",
+    ]
+    if article_status:
+        body_lines.extend([article_status, ""])
+    body_lines.extend([
+        persian_article,
+        "",
+        f"🏛 منبع: {publisher_name}",
+    ])
+    if publisher_link:
+        body_lines.append(f"🔗 لینک منبع: {publisher_link}")
+    body_lines.extend([
+        "",
+        "⚠️ این تحلیل بر اساس اطلاعات زمان انتشار خبر است و سیگنال معاملاتی یا توصیه خریدوفروش نیست.",
+    ])
     return (
-        "📰 خبر | Gold News\\n\\n"
-        f"📰 عنوان اصلی: {title}\\n"
-        f"🇮🇷 عنوان فارسی: {persian_title}\\n"
-        f"📅 تاریخ انتشار: {kabul_published}\\n\\n"
-        f"📄 وضعیت متن: {article_status}\\n\\n"
-        "📰 متن کامل خبر (ترجمه فارسی):\\n"
-        f"{persian_article}\\n\\n"
-        + f"🏛 منبع: {source}\\n"
-        + (f"🔗 لینک خبر اصلی: {link}\\n\\n" if link else "\\n")
-        + "Gold Admin\\n"
-        + "News Admin"
+        "📰 خبر | Gold News\n\n"
+        f"📰 عنوان: {persian_title}\n"
+        + "\n".join(body_lines)
+        + "\n\nGold Admin\nNews Admin"
     )
 
 def main():
