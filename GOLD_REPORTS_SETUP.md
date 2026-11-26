@@ -8,8 +8,10 @@ This is a separate bot implementation. It does not import, trigger, or modify Go
 
 ## Automation
 - Daily at 09:00 Asia/Kabul: Saturday = current-month calendar, Sunday = upcoming-week outlook, Monday-Friday = today's events.
-- Every 10 minutes: checks high-impact events, sends a pre-release scenario report within 60 minutes of release, and sends a post-release update when an actual value appears.\n- At the start-of-day report: lists Sydney, Tokyo, London, and New York session opening/closing times in Kabul time, indicates which sessions are already open, and names public holidays where sessions are closed.\n- Every 10 minutes: announces each session opening and closing near the boundary time. Session times use local time zones and automatically account for daylight saving changes.\n- All messages use the same send-and-pin routine; Telegram pin permission is required.
-- Each sent message is pinned. Pin failures are logged separately; posting is not treated as pin success.
+- Every 10 minutes: checks high-impact events, sends a pre-release scenario report within 60 minutes of release, and sends a post-release update when an actual value appears.
+- At the start-of-day report: lists Sydney, Tokyo, London, and New York session opening/closing times in Kabul time, indicates which sessions are already open, and names public holidays where sessions are closed.
+- Every 10 minutes: announces each session opening and closing near the boundary time. Session times use local time zones and automatically account for daylight saving changes.
+- All messages use the same send-and-pin routine; Telegram pin permission is required.
 
 ## Data and limitations
 - Calendar events are read from the Forex Factory monthly calendar page (including forecast, previous and actual when present).
