@@ -32,8 +32,6 @@ def _fetch_yahoo(symbol, session, timeout):
     age = max(0, int((datetime.now(timezone.utc) - observed).total_seconds() / 60))
     if symbol == "^TNX":
         value /= 10.0
-        # Yield change is reported in percentage points, not percent change.
-        change = ((float(points[-1][1]) - float(prior[1])) / 10.0) if prior else None
     return {
         "value": round(value, 4),
         "change_pct": round(change, 4) if change is not None else None,
