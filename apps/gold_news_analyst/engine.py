@@ -51,34 +51,6 @@ def _event_labels(headline, lead):
             labels.append(label)
     return labels
 
-def _market_context(snapshot):
-    if not snapshot: return [], ["داده بین‌بازاری در این اجرا دریافت نشد"]
-    lines, warnings = [], []
-    for key in ("XAUUSD", "DXY", "US10Y_REAL", "US10Y", "USOIL"):
-        item = snapshot.get(key)
-        if not item:
-            warnings.append(f"{key}: داده در دسترس نیست")
-            continue
-        value = item.get("value")
-        status = item.get("status", "UNKNOWN")
-        age = item.get("age_minutes")
-        change = item.get("change_pct")
-        change_points = item.get("change_points")
-        unit = item.get("unit", "")
-        source = item.get("source", "منبع نامشخص")
-        observed = item.get("observed_utc", "")
-        detail = f"{key}={value} {unit} ({status}، منبع: {source}"
-        if age is not None: detail += f"، عمر داده {age} دقیقه"
-        if key in ("US10Y", "US10Y_REAL") and change_points is not None:
-            detail += f"، تغییر بازده {change_points:+} واحد درصد"
-        elif change is not None:
-            detail += f"، تغییر حدود ۲۴ ساعت {change}%"
-        if observed: detail += f"، زمان مشاهده {observed}"
-        detail += ")"
-        lines.append(detail)
-        if status not in ("LIVE", "DELAYED", "DAILY"): warnings.append(f"{key}: وضعیت داده {status}")
-    return lines, warnings
-
 def _scenarios(labels, company):
     if company:
         return (
