@@ -343,6 +343,39 @@ def event_message(event, pre=True):
               "", "<b>Gold Admin</b>", "<b>Reports Admin</b>"]
     return "\n".join(lines)
 
+def test_news_message():
+    # One manually triggered sample based on a current Reuters report; it is clearly labeled as a test.
+    lines = [
+        "🧪 <b>پیام آزمایشی خبر | Gold Reports</b>",
+        "",
+        "📰 <b>عنوان اصلی:</b> Gold drifts lower as Fed rate-hike fears loom",
+        "🇮🇷 <b>عنوان فارسی:</b> طلا در پی افزایش انتظارات برای افزایش نرخ بهره فدرال رزرو تحت فشار قرار گرفت",
+        "📅 <b>تاریخ خبر:</b> 2026-11-26",
+        "🗞 <b>منبع:</b> Reuters",
+        "",
+        "<b>خلاصه خبر:</b>",
+        "رویترز گزارش داد که قیمت جهانی طلا در معاملات پنج‌شنبه حدود 0.3٪ کاهش یافت و به 3,571.17 دلار در هر اونس رسید. تداوم فشارهای تورمی آمریکا و افزایش انتظار بازار برای بالا رفتن دوباره نرخ بهره فدرال رزرو از عوامل فشار بر طلا عنوان شده‌اند. بازارهای آمریکا به مناسبت Thanksgiving تعطیل بودند.",
+        "",
+        "<b>اهمیت خبر برای بازار:</b> <b>زیاد</b>",
+        "",
+        "<b>نمادهای مرتبط و اثر احتمالی:</b>",
+        "• <b>XAUUSD:</b> فشار نزولی؛ نرخ بهره بالاتر هزینه فرصت نگهداری طلا را افزایش می‌دهد.",
+        "• <b>DXY / USD:</b> احتمال حمایت از دلار در صورت تقویت انتظارات انقباضی فدرال رزرو.",
+        "• <b>بازده اوراق آمریکا:</b> در صورت افزایش انتظارات نرخ بهره، احتمال فشار صعودی بر بازده‌ها وجود دارد.",
+        "",
+        "<b>جمع‌بندی اثر بر طلا:</b>",
+        "خبر در مجموع برای طلا منفی ارزیابی می‌شود؛ اما اگر افزایش نرخ بهره قبلاً در قیمت‌ها لحاظ شده باشد یا دلار و بازده اوراق عقب‌نشینی کنند، واکنش طلا می‌تواند محدود یا معکوس شود.",
+        "",
+        "<b>ریسک و نکته مهم:</b>",
+        "به دلیل تعطیلی Thanksgiving و نقدشوندگی کمتر بازار آمریکا، نوسان و فاصله خریدوفروش ممکن است غیرعادی باشد. این پیام نمونه‌ای برای نمایش قالب است و سیگنال معاملاتی نیست.",
+        "",
+        "🔗 <b>لینک منبع:</b> <a href=\"https://www.reuters.com/world/india/gold-steadies-after-hitting-over-1-year-low-fed-outlook-focus-2026-11-26/\">مشاهده گزارش Reuters</a>",
+        "",
+        "<b>Gold Admin</b>",
+        "<b>Reports Admin</b>"
+    ]
+    return "\n".join(lines)
+
 def send_telegram(text):
     if not TOKEN or not CHAT_ID:
         raise RuntimeError("Missing GOLD_REPORTS_BOT_TOKEN or GOLD_REPORTS_CHANNEL_ID secret")
@@ -442,6 +475,8 @@ def main():
     mode = os.environ.get("REPORTS_MODE", "monitor")
     if mode == "daily":
         publish_scheduled_report(events, state, now, holiday_data)
+    elif mode == "test_news":
+        send_telegram(test_news_message())
     else:
         monitor_events(events, state, now)
         monitor_session_boundaries(state, now, holiday_data, events)
