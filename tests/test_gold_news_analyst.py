@@ -48,7 +48,7 @@ class AnalystTests(unittest.TestCase):
     def test_missing_market_data_is_not_invented(self):
         result = analyse(self.item("Core CPI inflation report released"))
         self.assertEqual(result["market_lines"], [])
-        self.assertIn("داده‌های موجود", " ".join(result["market_warnings"]))
+        self.assertIn("داده بین‌بازاری", " ".join(result["market_warnings"]))
 
     def test_old_and_low_relevance_news_rejected(self):
         old = self.item("Fed news", published_utc=(datetime.now(timezone.utc)-timedelta(days=2)).isoformat())
