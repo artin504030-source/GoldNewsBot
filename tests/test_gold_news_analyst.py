@@ -62,6 +62,13 @@ class AnalystTests(unittest.TestCase):
         self.assertEqual(result["market_lines"], [])
         self.assertFalse(result["market_warnings"])
 
+    def test_report_includes_original_and_persian_headlines(self):
+        item = self.item("Federal Reserve keeps interest rates unchanged")
+        with patch("apps.gold_news_analyst.report.translate_title_to_persian", return_value="فدرال رزرو نرخ بهره را بدون تغییر حفظ کرد"):
+            output = render(item)
+        self.assertIn("عنوان اصلی:", output)
+        self.assertIn("عنوان فارسی: فدرال رزرو نرخ بهره را بدون تغییر حفظ کرد", output)
+
     def test_news_only_report_has_no_intermarket_section(self):
         output = render(self.item("Core CPI above expectations"))
         self.assertNotIn("داده‌های بین‌بازاری", output)
