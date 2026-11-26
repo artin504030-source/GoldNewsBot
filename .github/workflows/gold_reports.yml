@@ -1,0 +1,56 @@
+name: Gold Reports Bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "daily report or event monitor"
+        required: true
+        default: "daily"
+        type: choice
+        options:
+          - daily
+          - monitor
+  schedule:
+    # 09:00 Asia/Kabul (UTC+4:30), every day; Python chooses monthly/weekly/daily report by weekday.
+    - cron: "30 4 * * 0-6"
+    # Monitor high-impact releases and publish pre/post reports.
+    - cron: "*/10 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gold-reports-bot
+  cancel-in-progress: false
+
+jobs:
+  reports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated dependencies
+        run: pip install -r gold_reports_requirements.txt
+      - name: Validate Python syntax
+        run: python -m py_compile gold_reports.py
+      - name: Run Gold Reports
+        env:
+          GOLD_REPORTS_BOT_TOKEN: ${{ secrets.GOLD_REPORTS_BOT_TOKEN }}
+          GOLD_REPORTS_CHANNEL_ID: ${{ secrets.GOLD_REPORTS_CHANNEL_ID }}
+          REPORTS_MODE: ${{ github.event.inputs.mode || (github.event.schedule == '30 4 * * 0-6' && 'daily' || 'monitor') }}
+        run: python gold_reports.py
+      - name: Persist deduplication state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gold_reports_state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Gold Reports delivery state"
+            git push
+          fi
