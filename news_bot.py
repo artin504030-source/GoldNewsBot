@@ -420,24 +420,33 @@ def make_message(source, entry):
     time.sleep(TRANSLATION_DELAY)
     persian_article = translate_to_persian(article_text) if article_text else "متن کامل خبر از منبع قابل دریافت نبود."
     article_status = (
-        "متن خبر از وب‌سایت منبع دریافت شد."
+        ""
         if full_article
-        else "⚠️ وب‌سایت متن کامل را در دسترس نگذاشت؛ متن زیر فقط محتوای موجود در فید خبری است و ممکن است کامل نباشد."
+        else "⚠️ متن کامل دریافت نشد؛ متن موجود از فید خبری ترجمه شده و ممکن است خلاصه باشد."
     )
-    title_block = f"📰 خبر | Gold News\n📰 عنوان اصلی: {title}\n🇮🇷 عنوان فارسی: {persian_title}"
-    body_block = (
-        f"📅 تاریخ انتشار: {kabul_published}\n"
-        f"📄 وضعیت متن: {article_status}\n\n"
-        "📰 متن کامل خبر (ترجمه فارسی):\n"
-        f"{persian_article}\n\n"
-        f"🏛 منبع: {source}\n"
-        + (f"🔗 لینک خبر اصلی: {link}" if link else "")
-    )
+    body_lines = [
+        f"📅 تاریخ انتشار: {kabul_published}",
+        "",
+        "🔎 متن خبر:",
+    ]
+    if article_status:
+        body_lines.extend([article_status, ""])
+    body_lines.extend([
+        persian_article,
+        "",
+        f"🏛 منبع: {source}",
+    ])
+    if link:
+        body_lines.append(f"🔗 لینک خبر اصلی: {link}")
+    body_lines.extend([
+        "",
+        "⚠️ این تحلیل بر اساس اطلاعات زمان انتشار خبر است و سیگنال معاملاتی یا توصیه خریدوفروش نیست.",
+    ])
     return (
-        "<b>Gold Channel | XAU</b>\n\n"
-        f"<b>عنوان:</b>\n{title_block}\n\n"
-        f"<b>متن:</b>\n{body_block}\n\n"
-        "<b>Gold Admin</b>\n<b>News Admin</b>"
+        "📰 خبر | Gold News\\n\\n"
+        f"📰 عنوان: {persian_title}\\n"
+        + "\\n".join(body_lines)
+        + "\\n\\nGold Admin\\nNews Admin"
     )
 
 def main():
