@@ -101,7 +101,7 @@ def _article_bodies(value):
     return bodies
 
 
-def extract_text(html, *, max_chars=30000, min_chars=1):
+def extract_text(html, *, max_chars=30000, min_chars=80):
     parser = _ArticleParser()
     parser.feed(html or "")
     # Prefer publisher-supplied schema.org articleBody, then article/main paragraphs.
@@ -114,12 +114,12 @@ def extract_text(html, *, max_chars=30000, min_chars=1):
     return text[:max_chars] if len(text) >= min_chars else ""
 
 
-def preview_article(url, title, *, session=None, resolver=None):
+def preview_article(url, title, *, session=None, resolver=None, min_chars=80):
     kw = {"session": session} if session is not None else {}
     if resolver is not None:
         kw["resolver"] = resolver
     html, final_url = fetch_public_page(url, **kw)
-    body = extract_text(html)
+    body = extract_text(html, min_chars=min_chars)
     c = classify_news(title, body)
     return {"title": title, "url": final_url, "body": body,
             "category": c.primary, "categories": list(c.categories),

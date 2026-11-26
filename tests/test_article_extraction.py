@@ -28,7 +28,7 @@ class ArticleExtractionTests(unittest.TestCase):
 
     def test_preserves_short_partial_publisher_paragraphs(self):
         html = '<article><p>Only the first two paragraphs are currently available.</p><p>Second paragraph with additional verified article details.</p></article>'
-        text = extract_text(html)
+        text = extract_text(html, min_chars=1)
         self.assertIn('Only the first two paragraphs', text)
         self.assertIn('additional verified article details', text)
 

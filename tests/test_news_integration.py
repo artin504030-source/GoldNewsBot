@@ -25,7 +25,7 @@ class NewsIntegrationTests(unittest.TestCase):
         self.assertFalse(result["full_article"])
         self.assertEqual(result["url"], "https://www.publisher.example/story")
         resolve.assert_called_once()
-        preview.assert_called_once_with("https://www.publisher.example/story", "Tanker incident")
+        preview.assert_called_once_with("https://www.publisher.example/story", "Tanker incident", min_chars=1)
 
     @patch("goldnewsbot.integration.preview_article")
     def test_uses_rss_only_when_publisher_text_is_unavailable(self, preview):

@@ -11,7 +11,7 @@ def fetch_and_classify_article(url, title, fallback=""):
     try:
         if urlparse(str(url or "")).hostname in GOOGLE_NEWS_HOSTS:
             resolved_url = resolve_article_url(url)
-        preview = preview_article(resolved_url, title)
+        preview = preview_article(resolved_url, title, min_chars=1)
         body = (preview.get("body") or "").strip()
         if body:
             # A short extract is still real publisher text: preserve it and mark
