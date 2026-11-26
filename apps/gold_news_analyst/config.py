@@ -10,7 +10,7 @@ class Settings:
     state_path: str = "gold_news_analyst_state.json"
     max_age_hours: int = 24
     min_relevance: int = 25
-    max_items: int = 2
+    max_items: int = 5
     dry_run: bool = False
     article_fetch: bool = True
 
