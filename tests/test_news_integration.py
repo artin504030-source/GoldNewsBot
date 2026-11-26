@@ -20,6 +20,7 @@ class NewsIntegrationTests(unittest.TestCase):
             "https://news.google.com/rss/articles/example?oc=5",
             "Tanker incident",
             "One-line RSS summary",
+            preserve_partial=True,
         )
         self.assertEqual(result["body"], preview.return_value["body"])
         self.assertFalse(result["full_article"])

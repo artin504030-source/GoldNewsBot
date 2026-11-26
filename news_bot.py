@@ -412,7 +412,7 @@ def make_message(source, entry):
     published_dt = entry_datetime(entry)
     kabul_published = kabul_time(published_dt) if published_dt else clean_text(entry.get("published", "زمان نامشخص"))
 
-    article_result = fetch_and_classify_article(link, title, raw_summary)
+    article_result = fetch_and_classify_article(link, title, raw_summary, preserve_partial=True)
     article_text = article_result["body"]
     full_article = article_result["full_article"]
     publisher_link = article_result.get("url") or link
