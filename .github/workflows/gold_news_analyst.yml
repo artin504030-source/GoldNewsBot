@@ -8,11 +8,6 @@ on:
         required: true
         type: boolean
         default: true
-      max_items:
-        description: "Maximum news items to process in this run"
-        required: false
-        type: number
-        default: 5
 
 permissions:
   contents: write
@@ -44,7 +39,7 @@ jobs:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
           GOLD_NEWS_ANALYST_MAX_AGE_HOURS: "24"
           GOLD_NEWS_ANALYST_MIN_RELEVANCE: "25"
-          GOLD_NEWS_ANALYST_MAX_ITEMS: ${{ inputs.max_items || 5 }}
+          GOLD_NEWS_ANALYST_MAX_ITEMS: "1"
           GOLD_NEWS_ANALYST_FETCH_ARTICLES: "true"
         run: python -m apps.gold_news_analyst
       - name: Save analyst delivery state
