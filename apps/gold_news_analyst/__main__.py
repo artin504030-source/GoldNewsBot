@@ -6,7 +6,6 @@ import requests
 from .config import Settings
 from .engine import eligible, fingerprint
 from .report import render
-from .market_context import fetch_market_snapshot
 
 def load_json(path, default):
     try: return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -68,15 +67,11 @@ def main():
     if not selected:
         print("No new eligible news items.")
         return
-    print("Fetching timestamped public market context (best effort).")
-    market_snapshot = fetch_market_snapshot()
-    for symbol, data in market_snapshot.items():
-        print(f"market {symbol}: status={data.get('status')} source={data.get('source')} observed={data.get('observed_utc')}")
     http_session = requests.Session()
     for item in selected:
         article = fetch_article(item, cfg.article_fetch, http_session)
         print(f"article status={article.get('status')} url={article.get('final_url')} chars={len(article.get('body',''))}")
-        message = render(item, article, market_snapshot)
+        message = render(item, article)
         if cfg.dry_run:
             print(message)
             print("\n" + "=" * 72 + "\n")
