@@ -29,11 +29,13 @@ def _fetch_yahoo(symbol, session, timeout):
     # Compare to the nearest available hourly observation at least 20h earlier.
     prior = next(((t, v) for t, v in reversed(points[:-1]) if ts - t >= 20 * 3600), None)
     change = ((value / prior[1]) - 1) * 100 if prior and prior[1] else None
+    change_points = (value - prior[1]) if prior and symbol == "^TNX" else None
     observed = datetime.fromtimestamp(ts, tz=timezone.utc)
     age = max(0, int((datetime.now(timezone.utc) - observed).total_seconds() / 60))
     return {
         "value": round(value, 4),
         "change_pct": round(change, 4) if change is not None else None,
+        "change_points": round(change_points, 4) if change_points is not None else None,
         "age_minutes": age,
         "observed_utc": observed.isoformat(),
         "status": "DELAYED" if age <= 360 else "STALE",
@@ -91,11 +93,11 @@ def fetch_market_snapshot(session=None, timeout=12, fred_api_key=None):
                 raise ValueError("FRED returned no real-yield observations")
             value = float(rows[0]["value"])
             prior = float(rows[1]["value"]) if len(rows) > 1 else None
-            change = ((value / prior) - 1) * 100 if prior else None
+            change_points = (value - prior) if prior is not None else None
             observed = datetime.strptime(rows[0]["date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
             age = max(0, int((datetime.now(timezone.utc) - observed).total_seconds() / 60))
             snapshot["US10Y_REAL"] = {
-                "value": round(value, 4), "change_pct": round(change, 4) if change is not None else None,
+                "value": round(value, 4), "change_points": round(change_points, 4) if change_points is not None else None,
                 "age_minutes": age, "observed_utc": observed.isoformat(),
                 "status": "DAILY" if age <= 5 * 24 * 60 else "STALE",
                 "source": "FRED:DFII10", "unit": "real_yield_percent",
