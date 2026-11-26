@@ -9159,6 +9159,41 @@
       "symbol": "XAUUSD",
       "timestamp": "2026-11-26T20:30:27.424000+00:00",
       "price": 3566.199951
+    },
+    {
+      "symbol": "EURUSD",
+      "timestamp": "2026-11-26T21:00:32+00:00",
+      "price": 1.09698
+    },
+    {
+      "symbol": "GBPUSD",
+      "timestamp": "2026-11-26T21:00:31+00:00",
+      "price": 1.310725
+    },
+    {
+      "symbol": "USDJPY",
+      "timestamp": "2026-11-26T21:00:34+00:00",
+      "price": 159.283
+    },
+    {
+      "symbol": "AUDUSD",
+      "timestamp": "2026-11-26T21:00:32+00:00",
+      "price": 0.66351
+    },
+    {
+      "symbol": "USDCAD",
+      "timestamp": "2026-11-26T21:00:34+00:00",
+      "price": 1.424835
+    },
+    {
+      "symbol": "DE30",
+      "timestamp": "2026-11-26T20:59:55+00:00",
+      "price": 25235.55
+    },
+    {
+      "symbol": "XAUUSD",
+      "timestamp": "2026-11-26T21:00:25.660000+00:00",
+      "price": 3566.199951
     }
   ],
   "daily_open": {
@@ -9325,6 +9360,43 @@
         "timestamp": "2026-11-25T21:30:26+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       }
+    },
+    "2026-11-27": {
+      "XAUUSD": {
+        "price": 3566.199951,
+        "timestamp": "2026-11-26T21:00:25.660000+00:00",
+        "source": "XAUS"
+      },
+      "EURUSD": {
+        "price": 1.09698,
+        "timestamp": "2026-11-26T21:00:32+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "GBPUSD": {
+        "price": 1.310725,
+        "timestamp": "2026-11-26T21:00:31+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "USDJPY": {
+        "price": 159.283,
+        "timestamp": "2026-11-26T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "AUDUSD": {
+        "price": 0.66351,
+        "timestamp": "2026-11-26T21:00:32+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "USDCAD": {
+        "price": 1.424835,
+        "timestamp": "2026-11-26T21:00:34+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "DE30": {
+        "price": 25235.55,
+        "timestamp": "2026-11-26T20:59:55+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      }
     }
   },
   "last_daily_close": {
@@ -9416,9 +9488,9 @@
   },
   "last_weekly_close": null,
   "sent": {
-    "daily_open": "2026-11-26",
+    "daily_open": "2026-11-27",
     "weekly_open": "",
     "daily_close": "2026-11-25"
   },
-  "last_price_slot": "2026-11-26T20:30:00+00:00"
+  "last_price_slot": "2026-11-26T21:00:00+00:00"
 }
