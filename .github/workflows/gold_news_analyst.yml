@@ -28,9 +28,12 @@ concurrency:
 
 jobs:
   analyse:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    # Process completed news runs even if a later, unrelated step failed.
+    # Cancelled upstream runs are ignored; archived items are still filtered
+    # by archived_at_utc >= workflow_run.run_started_at in the analyst runner.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -52,7 +55,7 @@ jobs:
           GOLD_NEWS_ANALYST_TRIGGERED_AFTER: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.run_started_at || '' }}
           GOLD_NEWS_ANALYST_MAX_AGE_HOURS: "24"
           GOLD_NEWS_ANALYST_MIN_RELEVANCE: "0"
-          GOLD_NEWS_ANALYST_MAX_ITEMS: "5"
+          GOLD_NEWS_ANALYST_MAX_ITEMS: "20"
           GOLD_NEWS_ANALYST_FETCH_ARTICLES: "true"
         run: python -m apps.gold_news_analyst
       - name: Save analyst delivery state
