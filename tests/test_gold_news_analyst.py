@@ -100,7 +100,7 @@ class AnalystTests(unittest.TestCase):
     def test_old_and_low_relevance_news_rejected(self):
         old = self.item("Fed news", published_utc=(datetime.now(timezone.utc)-timedelta(days=2)).isoformat())
         weak = self.item("Fed news", relevance_score=10); now = datetime.now(timezone.utc)
-        self.assertFalse(eligible(old, now)); self.assertFalse(eligible(weak, now))
+        self.assertFalse(eligible(old, now)); self.assertTrue(eligible(weak, now)); self.assertFalse(eligible(weak, now, min_relevance=25))
 
     def test_source_count_not_claimed_as_independent_confirmation(self):
         self.assertIn("تأیید ناشران مستقل نیست", render(self.item("A geopolitical event", source_count=8)))
