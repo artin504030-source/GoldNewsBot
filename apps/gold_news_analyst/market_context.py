@@ -30,8 +30,6 @@ def _fetch_yahoo(symbol, session, timeout):
     change = ((value / prior[1]) - 1) * 100 if prior and prior[1] else None
     observed = datetime.fromtimestamp(ts, tz=timezone.utc)
     age = max(0, int((datetime.now(timezone.utc) - observed).total_seconds() / 60))
-    if symbol == "^TNX":
-        value /= 10.0
     return {
         "value": round(value, 4),
         "change_pct": round(change, 4) if change is not None else None,
@@ -45,7 +43,34 @@ def _fetch_yahoo(symbol, session, timeout):
 def fetch_market_snapshot(session=None, timeout=12):
     session = session or requests.Session()
     snapshot = {}
+    # Reuse the free spot provider already integrated in Gold Market.
+    try:
+        response = session.get(
+            "https://xaus.com/api/v1/spot",
+            params={"compact": "1"},
+            headers={"User-Agent": "GoldNewsBot/2.0"},
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        state = payload.get("data_state") or {}
+        xau = payload.get("xau") or {}
+        stamp = state.get("as_of") or payload.get("updated_at")
+        price = xau.get("price") or payload.get("spot_usd_oz")
+        if price is None or not stamp or state.get("status") not in ("fresh", "stale"):
+            raise ValueError("XAUS spot quote unavailable")
+        observed = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        age = max(0, int((datetime.now(timezone.utc) - observed.astimezone(timezone.utc)).total_seconds() / 60))
+        snapshot["XAUUSD"] = {
+            "value": round(float(price), 4), "change_pct": None, "age_minutes": age,
+            "observed_utc": observed.isoformat(), "status": "LIVE" if state.get("status") == "fresh" and age <= 30 else "STALE",
+            "source": "XAUS spot", "unit": "USD/oz",
+        }
+    except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+        snapshot["XAUUSD"] = {"status": "UNAVAILABLE", "source": "XAUS spot", "error": str(exc)[:180]}
     for key, symbol in YAHOO.items():
+        if key == "XAUUSD":
+            continue
         try:
             snapshot[key] = _fetch_yahoo(symbol, session, timeout)
         except (requests.RequestException, ValueError, KeyError, TypeError, IndexError) as exc:
