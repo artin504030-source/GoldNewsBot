@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from unittest.mock import patch
-from apps.gold_news_analyst.engine import analyse, eligible, fingerprint
+from apps.gold_news_analyst.engine import analyse, eligible, fingerprint, SYMBOL_UNIVERSE
 from apps.gold_news_analyst.report import render
 from apps.gold_news_analyst import __main__ as analyst_main
 
@@ -66,6 +66,25 @@ class AnalystTests(unittest.TestCase):
         output = render(self.item("Core CPI above expectations"))
         self.assertNotIn("داده‌های بین‌بازاری", output)
         self.assertIn("نمادهای مرتبط و اثر احتمالی", output)
+
+    def test_symbol_universe_matches_all_gold_prices_instruments(self):
+        self.assertEqual(len(SYMBOL_UNIVERSE), 16)
+        for symbol in ("XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", "EURUSD", "GBPUSD",
+                       "USDJPY", "AUDUSD", "USDCAD", "US30", "USTEC", "US500",
+                       "DE30", "USOIL", "UKOIL", "XNGUSD"):
+            self.assertIn(symbol, SYMBOL_UNIVERSE)
+
+    def test_energy_news_maps_to_oil_and_gas_symbols(self):
+        result = analyse(self.item("Natural gas supply disruption after pipeline attack"),
+                         "Natural gas supply disruption and pipeline attack. " * 8)
+        impacts = {x["symbol"]: x for x in result["symbol_impacts"]}
+        self.assertIn("USOIL", impacts)
+        self.assertIn("UKOIL", impacts)
+        self.assertIn("XNGUSD", impacts)
+
+    def test_gold_relevance_filter_is_disabled_for_all_news(self):
+        item = self.item("Regional manufacturing update", relevance_score=0)
+        self.assertTrue(eligible(item, datetime.now(timezone.utc), min_relevance=0))
 
     def test_unrelated_company_news_does_not_invent_symbol_impact(self):
         result = analyse(self.item("Small local retailer appoints new CEO"))
