@@ -5,6 +5,11 @@ on:
     branches:
       - feat/gold-news-analyst-quality-v2
   pull_request:
+  workflow_run:
+    workflows:
+      - "Gold News Bot"
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       dry_run:
@@ -22,13 +27,14 @@ concurrency:
 
 jobs:
   analyse:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.ref }}
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -41,14 +47,16 @@ jobs:
         env:
           GOLD_NEWS_ANALYST_BOT_TOKEN: ${{ secrets.GOLD_NEWS_ANALYST_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
-          DRY_RUN: ${{ github.event_name != 'workflow_dispatch' && 'true' || inputs.dry_run && 'true' || 'false' }}
+          DRY_RUN: ${{ (github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)) && 'false' || 'true' }}
           GOLD_NEWS_ANALYST_MAX_AGE_HOURS: "24"
           GOLD_NEWS_ANALYST_MIN_RELEVANCE: "0"
           GOLD_NEWS_ANALYST_MAX_ITEMS: "5"
           GOLD_NEWS_ANALYST_FETCH_ARTICLES: "true"
         run: python -m apps.gold_news_analyst
       - name: Save analyst delivery state
-        if: success() && github.event_name == 'workflow_dispatch' && inputs.dry_run != true
+        if: success() && (github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true))
+        env:
+          TARGET_BRANCH: ${{ github.event_name == 'workflow_run' && 'main' || github.ref_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -56,10 +64,10 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Update Gold News Analyst delivery state"
             for attempt in 1 2 3; do
-              if git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+              if git push origin "HEAD:${TARGET_BRANCH}"; then exit 0; fi
               echo "Push raced with another workflow; rebasing and retrying ($attempt/3)."
-              git fetch origin "+refs/heads/${GITHUB_REF_NAME}:refs/remotes/origin/${GITHUB_REF_NAME}"
-              git rebase "origin/${GITHUB_REF_NAME}"
+              git fetch origin "+refs/heads/${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}"
+              git rebase "origin/${TARGET_BRANCH}"
             done
             echo "Could not publish analyst delivery state after 3 attempts."
             exit 1
