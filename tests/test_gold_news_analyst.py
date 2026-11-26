@@ -128,7 +128,7 @@ class AnalystTests(unittest.TestCase):
             archive = Path(tmp)/"archive.json"; state_path = Path(tmp)/"state.json"
             archive.write_text(__import__("json").dumps([one,two]), encoding="utf-8")
             cfg = analyst_main.Settings("token","channel",str(archive),str(state_path),24,0,5,False,False); calls=[]
-            def fake_send(*args):
+            def fake_send(*args, **kwargs):
                 calls.append(1)
                 if len(calls)==2:
                     saved=__import__("json").loads(state_path.read_text(encoding="utf-8"))["sent"]
@@ -152,7 +152,7 @@ class AnalystTests(unittest.TestCase):
                  patch.dict(analyst_main.os.environ, {"GOLD_NEWS_ANALYST_TRIGGERED_AFTER": cutoff.isoformat()}), \
                  patch.object(analyst_main, "fetch_article", return_value={"body": "", "final_url": "https://example.com/a"}), \
                  patch.object(analyst_main, "render", side_effect=lambda item, article: item["title"]), \
-                 patch.object(analyst_main, "send", side_effect=lambda token, chat, message: sent_messages.append(message)):
+                 patch.object(analyst_main, "send", side_effect=lambda token, chat, message, **kwargs: sent_messages.append(message)):
                 analyst_main.main()
             self.assertEqual(sent_messages, ["News sent in this run"])
             self.assertEqual(__import__("json").loads(state_path.read_text(encoding="utf-8"))["sent"], [fingerprint(new)])
