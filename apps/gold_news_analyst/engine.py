@@ -44,7 +44,7 @@ def _event_labels(text):
     return [label for label, terms in EVENTS.items() if any(term in text for term in terms)]
 
 def _market_context(snapshot):
-    if not snapshot: return [], []
+    if not snapshot: return [], ["داده بین‌بازاری در این اجرا دریافت نشد"]
     lines, warnings = [], []
     for key in ("XAUUSD", "DXY", "US10Y", "USOIL"):
         item = snapshot.get(key)
