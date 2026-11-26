@@ -1,6 +1,7 @@
 name: Gold News Analyst
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       dry_run:
@@ -37,14 +38,14 @@ jobs:
         env:
           GOLD_NEWS_ANALYST_BOT_TOKEN: ${{ secrets.GOLD_NEWS_ANALYST_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+          DRY_RUN: ${{ github.event_name != 'workflow_dispatch' && 'true' || inputs.dry_run && 'true' || 'false' }}
           GOLD_NEWS_ANALYST_MAX_AGE_HOURS: "24"
           GOLD_NEWS_ANALYST_MIN_RELEVANCE: "25"
           GOLD_NEWS_ANALYST_MAX_ITEMS: "5"
           GOLD_NEWS_ANALYST_FETCH_ARTICLES: "true"
         run: python -m apps.gold_news_analyst
       - name: Save analyst delivery state
-        if: success() && (github.event_name != 'workflow_dispatch' || inputs.dry_run != true)
+        if: success() && github.event_name == 'workflow_dispatch' && inputs.dry_run != true
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
