@@ -9124,6 +9124,41 @@
       "symbol": "DE30",
       "timestamp": "2026-11-26T19:00:03+00:00",
       "price": 25225.05
+    },
+    {
+      "symbol": "EURUSD",
+      "timestamp": "2026-11-26T20:30:10+00:00",
+      "price": 1.09718
+    },
+    {
+      "symbol": "GBPUSD",
+      "timestamp": "2026-11-26T20:30:13+00:00",
+      "price": 1.310825
+    },
+    {
+      "symbol": "USDJPY",
+      "timestamp": "2026-11-26T20:30:02+00:00",
+      "price": 159.2645
+    },
+    {
+      "symbol": "AUDUSD",
+      "timestamp": "2026-11-26T20:30:13+00:00",
+      "price": 0.66343
+    },
+    {
+      "symbol": "USDCAD",
+      "timestamp": "2026-11-26T20:30:09+00:00",
+      "price": 1.424625
+    },
+    {
+      "symbol": "DE30",
+      "timestamp": "2026-11-26T20:30:19+00:00",
+      "price": 25231.05
+    },
+    {
+      "symbol": "XAUUSD",
+      "timestamp": "2026-11-26T20:30:27.424000+00:00",
+      "price": 3566.199951
     }
   ],
   "daily_open": {
@@ -9385,5 +9420,5 @@
     "weekly_open": "",
     "daily_close": "2026-11-25"
   },
-  "last_price_slot": "2026-11-26T19:00:00+00:00"
+  "last_price_slot": "2026-11-26T20:30:00+00:00"
 }
