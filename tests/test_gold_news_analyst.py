@@ -117,7 +117,7 @@ class AnalystTests(unittest.TestCase):
             archive = Path(tmp)/"archive.json"; state_path = Path(tmp)/"state.json"
             archive.write_text(__import__("json").dumps([item]), encoding="utf-8")
             cfg = analyst_main.Settings("token","channel",str(archive),str(state_path),24,0,5,True,False)
-            with patch.object(analyst_main.Settings,"from_env",return_value=cfg), patch.object(analyst_main,"send") as send_mock, patch.object(analyst_main,"fetch_market_snapshot",return_value={}):
+            with patch.object(analyst_main.Settings,"from_env",return_value=cfg), patch.object(analyst_main,"send") as send_mock:
                 analyst_main.main()
             send_mock.assert_not_called()
             self.assertFalse(state_path.exists())
