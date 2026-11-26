@@ -49,39 +49,34 @@ class AnalystTests(unittest.TestCase):
         self.assertTrue(result["article_text_ok"])
         self.assertIn("سیاست پولی و نرخ بهره", result["events"])
 
-    def test_market_snapshot_is_included_and_can_confirm_headwind(self):
+    def test_market_snapshot_is_ignored_and_symbol_impacts_are_classified(self):
         snapshot = {
             "DXY": {"value": 105, "change_pct": 0.4, "status": "DELAYED", "age_minutes": 30},
             "US10Y": {"value": 4.3, "change_pct": 0.05, "status": "DELAYED", "age_minutes": 30},
             "XAUUSD": {"value": 2700, "change_pct": -0.3, "status": "DELAYED", "age_minutes": 30},
         }
         result = analyse(self.item("Core CPI above expectations"), "", snapshot)
-        self.assertTrue(any("داده‌های موجود دلار/بازده" in x for x in result["drivers"]))
-        self.assertTrue(result["market_lines"])
-
-    def test_missing_market_data_is_not_invented(self):
-        result = analyse(self.item("Core CPI inflation report released"))
+        impacts = {x["symbol"]: x for x in result["symbol_impacts"]}
+        self.assertIn("XAUUSD", impacts)
+        self.assertIn("EURUSD", impacts)
         self.assertEqual(result["market_lines"], [])
-        self.assertIn("داده بین‌بازاری", " ".join(result["market_warnings"]))
+        self.assertFalse(result["market_warnings"])
 
-    def test_stale_quotes_never_confirm_market_direction(self):
-        snapshot = {
-            "DXY": {"value": 105, "change_pct": 0.8, "status": "STALE", "age_minutes": 900},
-            "US10Y": {"value": 4.4, "change_points": 0.10, "status": "STALE", "age_minutes": 900},
-            "US10Y_REAL": {"status": "UNAVAILABLE"},
-        }
-        result = analyse(self.item("Core CPI above expectations"), "", snapshot)
-        self.assertFalse(any("داده‌های موجود دلار/بازده" in x for x in result["drivers"]))
+    def test_news_only_report_has_no_intermarket_section(self):
+        output = render(self.item("Core CPI above expectations"))
+        self.assertNotIn("داده‌های بین‌بازاری", output)
+        self.assertIn("نمادهای مرتبط و اثر احتمالی", output)
 
-    def test_yield_basis_point_change_confirms_only_when_fresh(self):
-        snapshot = {
-            "DXY": {"status": "UNAVAILABLE"},
-            "US10Y_REAL": {"value": 2.8, "change_points": 0.06, "status": "DAILY", "age_minutes": 1800,
-                           "source": "FRED:DFII10", "unit": "real_yield_percent",
-                           "observed_utc": "2026-11-25T00:00:00+00:00"},
-        }
-        result = analyse(self.item("Fed policy update"), "", snapshot)
-        self.assertTrue(any("داده‌های موجود دلار/بازده" in x for x in result["drivers"]))
+    def test_unrelated_company_news_does_not_invent_symbol_impact(self):
+        result = analyse(self.item("Small local retailer appoints new CEO"))
+        self.assertEqual(result["symbol_impacts"], [])
+
+    def test_stale_or_fresh_quotes_do_not_change_news_only_analysis(self):
+        fresh = {"DXY": {"value": 105, "change_pct": 0.8, "status": "DELAYED"}}
+        stale = {"DXY": {"value": 105, "change_pct": -0.8, "status": "STALE"}}
+        headline = self.item("Core CPI above expectations")
+        self.assertEqual(analyse(headline, "", fresh)["symbol_impacts"],
+                         analyse(headline, "", stale)["symbol_impacts"])
 
     def test_old_and_low_relevance_news_rejected(self):
         old = self.item("Fed news", published_utc=(datetime.now(timezone.utc)-timedelta(days=2)).isoformat())
