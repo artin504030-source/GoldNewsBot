@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime, timedelta, date
 from pathlib import Path
 from urllib.parse import quote
@@ -309,6 +310,25 @@ def compare_actual_forecast(actual, forecast):
         return "عدد واقعی پایین‌تر از پیش‌بینی منتشر شد."
     return "عدد واقعی مطابق پیش‌بینی منتشر شد."
 
+def analyst_expectation_comparison(label, actual, forecast):
+    comparison = compare_actual_forecast(actual, forecast)
+    if label == "نامشخص":
+        return "به‌دلیل نبود جهت غالب روشن در دیدگاه منابع، تطابق نتیجه با نظر تحلیل‌گران قابل قضاوت نیست."
+    if "بالاتر" in comparison:
+        surprise = "بالاتر/قوی‌تر"
+    elif "پایین‌تر" in comparison:
+        surprise = "پایین‌تر/ضعیف‌تر"
+    elif "مطابق پیش‌بینی" in comparison:
+        surprise = "مطابق پیش‌بینی"
+    else:
+        return "به‌دلیل نبود عدد واقعی یا پیش‌بینی قابل‌مقایسه، تطابق با نظر تحلیل‌گران مشخص نیست."
+    if surprise == label:
+        return f"نتیجه واقعی در جهت غالبی بود که در دیدگاه منابع دیده می‌شد ({label})؛ بنابراین با آن دیدگاه‌ها هم‌جهت بود."
+    if surprise == "مطابق پیش‌بینی":
+        return "عدد واقعی دقیقاً مطابق پیش‌بینی تقویم بود؛ دیدگاه جهت‌دار منابع درباره غافلگیری بالاتر/پایین‌تر تأیید نشد."
+    return f"نتیجه واقعی {surprise} بود، درحالی‌که جهت غالب تیترها {label} را نشان می‌داد؛ بنابراین با دیدگاه غالب منابع هم‌جهت نبود."
+
+
 def event_message(event, pre=True):
     articles = analyst_sources(event)
     bias, label, impacts = scenario_text(event, articles)
@@ -317,30 +337,47 @@ def event_message(event, pre=True):
         "🗓 <b>پیش‌تحلیل رویداد اقتصادی</b>" if pre else "📊 <b>نتیجه رویداد اقتصادی</b>",
         f"🌍 <b>{html.escape(event['currency'])} | {html.escape(event['title'])}</b>",
         f"🕘 زمان کابل: <code>{when}</code>",
-        f"اهمیت: {html.escape(event['impact'])}",
-        f"پیش‌بینی بازار: <b>{html.escape(event['forecast'] or 'در دسترس نیست')}</b>",
+        f"اهمیت در Forex Factory: {html.escape(event['impact'])}",
+        f"پیش‌بینی عددی Forex Factory: <b>{html.escape(event['forecast'] or 'در دسترس نیست')}</b>",
         f"عدد قبلی: {html.escape(event['previous'] or 'در دسترس نیست')}",
     ]
     if pre:
-        lines += ["", "<b>دیدگاه منابع و تحلیل‌گران</b>", html.escape(bias),
-                  f"جهت تیترهای بررسی‌شده: <b>{html.escape(label)}</b>",
-                  "", "<b>سه سناریو</b>",
-                  f"• مطابق انتظار: {html.escape(impacts[1])}",
-                  f"• بالاتر از انتظار: {html.escape(impacts[0])}",
-                  f"• پایین‌تر از انتظار: اثر معکوس سناریوی بالاتر؛ با توجه به نوع شاخص و واکنش بازده‌ها.",
-                  "", "<b>منابع منتشرشده</b>"]
+        lines += [
+            "", "<b>انتظار و دیدگاه تحلیل‌گران</b>",
+            html.escape(bias),
+            f"جهت غالب برداشت‌شده از گزارش‌ها: <b>{html.escape(label)}</b>",
+            "توجه: این بخش جمع‌بندی تیترها و توضیحات منابع است، نه اجماع عددی رسمی؛ پیش‌بینی عددی همان مقدار درج‌شده در Forex Factory است.",
+            "", "<b>سه سناریوی قبل از انتشار</b>",
+            f"• مطابق پیش‌بینی: {html.escape(impacts[1])}",
+            f"• بالاتر/قوی‌تر از پیش‌بینی: {html.escape(impacts[0])}",
+            "• پایین‌تر/ضعیف‌تر از پیش‌بینی: اثر معکوس سناریوی بالاتر؛ با توجه به نوع شاخص، ارز مربوطه و واکنش بازده اوراق.",
+            "", "<b>گزارش‌ها و نظر منابع</b>"
+        ]
     else:
-        lines += ["", f"عدد واقعی: <b>{html.escape(event['actual'] or 'هنوز در منبع ثبت نشده')}</b>",
-                  f"پیش‌بینی: {html.escape(event['forecast'] or 'ناموجود')}",
-                  f"مقایسه: {html.escape(compare_actual_forecast(event['actual'], event['forecast']))}",
-                  f"عدد قبلی: {html.escape(event['previous'] or 'ناموجود')}",
-                  "", "نتیجه با پیش‌بینی مقایسه می‌شود؛ اصلاح عدد قبلی فقط در صورت مشاهده تغییر در منبع اعلام می‌شود."]
-    for a in articles[:4]:
-        lines.append(f'• <a href="{html.escape(a["link"], quote=True)}">{html.escape(a["source"])}: {html.escape(a["title"][:130])}</a>')
+        lines += [
+            "", f"عدد واقعی: <b>{html.escape(event['actual'] or 'هنوز در منبع ثبت نشده')}</b>",
+            f"مقایسه با پیش‌بینی: <b>{html.escape(compare_actual_forecast(event['actual'], event['forecast']))}</b>",
+            f"دیدگاه غالب پیش از انتشار: <b>{html.escape(label)}</b>",
+            f"آیا مطابق انتظار تحلیل‌گران بود؟ {html.escape(analyst_expectation_comparison(label, event['actual'], event['forecast']))}",
+            f"جمع‌بندی دیدگاه منابع پیش از انتشار: {html.escape(bias)}",
+            "", "نتیجه بالا بر اساس عدد واقعی و پیش‌بینی ثبت‌شده در تقویم است؛ واکنش بازار ممکن است به جزئیات گزارش و بازده اوراق وابسته باشد."
+        ]
+    for article in articles[:4]:
+        detail = article.get("description", "")
+        detail = detail[:260] + ("…" if len(detail) > 260 else "")
+        title = html.escape(article["title"][:130])
+        source = html.escape(article["source"])
+        link = html.escape(article["link"], quote=True)
+        line = f'• <a href="{link}">{source}: {title}</a>'
+        if detail:
+            line += f"\n  دیدگاه/خلاصه: {html.escape(detail)}"
+        lines.append(line)
     if not articles:
-        lines.append("منابع تحلیلی قابل استناد برای این رویداد پیدا نشد؛ اجماع تحلیل‌گران اعلام نمی‌شود.")
-    lines += ["", "<i>این گزارش سناریوها را توصیف می‌کند و توصیه معاملاتی یا تضمین جهت بازار نیست.</i>",
-              "", "<b>Gold Admin</b>", "<b>Reports Admin</b>"]
+        lines.append("برای این رویداد گزارش تحلیلی قابل استناد پیدا نشد؛ بنابراین نظر تحلیل‌گران یا تطابق آن با نتیجه اعلام نمی‌شود.")
+    lines += [
+        "", "<i>منبع خود رویداد و ارقام: Forex Factory. منابع دیگر فقط برای دیدگاه و تحلیل تکمیلی استفاده می‌شوند. این گزارش توصیه معاملاتی نیست.</i>",
+        "", "<b>Gold Admin</b>", "<b>Reports Admin</b>"
+    ]
     return "\n".join(lines)
 
 def test_pre_news_message(events, now):
@@ -397,25 +434,53 @@ def test_news_message(events):
     ]
     return "\n".join(lines)
 
+def telegram_post(url, payload, timeout=25, retries=3):
+    last_response = None
+    for attempt in range(retries):
+        response = requests.post(url, json=payload, timeout=timeout)
+        last_response = response
+        try:
+            data = response.json()
+        except ValueError:
+            data = {}
+        if response.ok and data.get("ok"):
+            return data
+        retry_after = (data.get("parameters") or {}).get("retry_after")
+        if response.status_code == 429 and retry_after and attempt < retries - 1:
+            print(f"Telegram rate limit; retrying after {retry_after}s", file=sys.stderr)
+            time.sleep(int(retry_after) + 1)
+            continue
+        description = data.get("description") or response.text[:300] or "unknown Telegram API error"
+        raise RuntimeError(f"Telegram API failed (HTTP {response.status_code}): {description}")
+    raise RuntimeError(f"Telegram API request failed after retries: {last_response.text[:300] if last_response else 'no response'}")
+
+
 def send_telegram(text):
     if not TOKEN or not CHAT_ID:
         raise RuntimeError("Missing GOLD_REPORTS_BOT_TOKEN or GOLD_REPORTS_CHANNEL_ID secret")
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    r = requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML",
-                                 "disable_web_page_preview": True}, timeout=25)
-    try:
-        data = r.json()
-    except ValueError:
-        data = {}
-    if not r.ok or not data.get("ok"):
-        description = data.get("description") or r.text[:300] or "unknown Telegram API error"
-        raise RuntimeError(f"Telegram sendMessage failed (HTTP {r.status_code}): {description}")
+    data = telegram_post(url, {
+        "chat_id": CHAT_ID, "text": text, "parse_mode": "HTML",
+        "disable_web_page_preview": True
+    })
     message_id = data["result"]["message_id"]
+
+    # Pin silently, then immediately unpin: the message remains in the channel without a pin.
     pin_url = f"https://api.telegram.org/bot{TOKEN}/pinChatMessage"
-    pin = requests.post(pin_url, json={"chat_id": CHAT_ID, "message_id": message_id,
-                                       "disable_notification": True}, timeout=20)
-    if not pin.ok or not pin.json().get("ok"):
-        print(f"WARNING: message sent but pin failed: {pin.text[:300]}", file=sys.stderr)
+    try:
+        telegram_post(pin_url, {
+            "chat_id": CHAT_ID, "message_id": message_id,
+            "disable_notification": True
+        }, timeout=20)
+    except Exception as exc:
+        print(f"WARNING: message sent but silent pin failed: {exc}", file=sys.stderr)
+        return message_id
+
+    unpin_url = f"https://api.telegram.org/bot{TOKEN}/unpinChatMessage"
+    try:
+        telegram_post(unpin_url, {"chat_id": CHAT_ID, "message_id": message_id}, timeout=20)
+    except Exception as exc:
+        print(f"WARNING: message was silently pinned but could not be unpinned: {exc}", file=sys.stderr)
     return message_id
 
 def send_long_telegram(message, limit=3500):
@@ -498,6 +563,8 @@ def main():
         publish_scheduled_report(events, state, now, holiday_data)
     elif mode == "test_news":
         send_telegram(test_news_message(events))
+    elif mode == "test_pre_news":
+        send_telegram(test_pre_news_message(events, now))
     else:
         monitor_events(events, state, now)
         monitor_session_boundaries(state, now, holiday_data, events)
