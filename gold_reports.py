@@ -47,7 +47,7 @@ def fetch_public_holidays(state, now):
         if cached and cached.get("fetched_at"):
             try:
                 fetched = datetime.fromisoformat(cached["fetched_at"])
-                refresh_due = (now - fetched).total_seconds() > 30 * 86400
+                refresh_due = (now - fetched).total_seconds() > (6 * 3600 if cached.get("unavailable") else 30 * 86400)
             except ValueError:
                 pass
         if refresh_due:
@@ -93,18 +93,21 @@ def session_status_text(now, holiday_data, ff_events):
         open_kabul, close_kabul = get_session_times(session, now)
         holiday = next((h for h in holiday_data.get(session["country"], [])
                         if h.get("date") == local_date.isoformat()), None)
-        holiday_reason = holiday.get("name") if holiday else None
+        ff_holiday_reason = "; ".join(sorted(set(ff_holidays.get(session["country"], []))))
         if local_date.weekday() >= 5:
-            holiday_reason = "تعطیلی آخر هفته بازار فارکس"
-        if not holiday_reason and ff_holidays.get(session["country"]):
-            holiday_reason = "; ".join(sorted(set(ff_holidays[session["country"]])))
-        if holiday_reason:
-            lines.append(f"🔴 <b>سشن {session['name']}: تعطیل</b> — {html.escape(holiday_reason)} ({COUNTRY_NAMES[session['country']]}).")
+            lines.append(f"🔴 <b>سشن {session['name']}: تعطیل آخر هفته</b> — بازار فارکس در تعطیلی هفتگی است.")
+            lines.append(f"زمان عادی بازگشایی: {open_kabul:%H:%M} | زمان عادی بسته‌شدن: {close_kabul:%H:%M} کابل")
+            continue
+        if ff_holiday_reason:
+            lines.append(f"🔴 <b>سشن {session['name']}: تعطیل بانکی</b> — {html.escape(ff_holiday_reason)} ({COUNTRY_NAMES[session['country']]}).")
             lines.append(f"زمان عادی بازگشایی: {open_kabul:%H:%M} | زمان عادی بسته‌شدن: {close_kabul:%H:%M} کابل")
             continue
         opened = open_kabul <= now < close_kabul
         state_label = "اکنون باز است" if opened else ("امروز هنوز باز نشده" if now < open_kabul else "امروز بسته شده")
-        lines.append(f"🟢 <b>سشن {session['name']}: {state_label}</b>")
+        if holiday:
+            lines.append(f"🟠 <b>سشن {session['name']}: {state_label}</b> — امروز تعطیلی رسمی {COUNTRY_NAMES[session['country']]} است: {html.escape(holiday.get('name', 'تعطیلی رسمی'))}. بسته بودن کامل بازار از این داده به‌تنهایی تأیید نمی‌شود.")
+        else:
+            lines.append(f"🟢 <b>سشن {session['name']}: {state_label}</b>")
         lines.append(f"بازگشایی: <code>{open_kabul:%H:%M}</code> کابل | بسته‌شدن: <code>{close_kabul:%H:%M}</code> کابل")
     lines.append("ساعت‌ها بر اساس ساعات متداول بازار فارکس و منطقه زمانی محلی هر مرکز محاسبه شده‌اند؛ تعطیلی‌های رسمی در صورت موجودبودن داده منبع اعمال می‌شوند.")
     return "\n".join(lines)
@@ -115,9 +118,7 @@ def monitor_session_boundaries(state, now, holiday_data):
     for session in SESSIONS:
         zone = ZoneInfo(session["zone"])
         local_date = now.astimezone(zone).date()
-        holiday = next((h for h in holiday_data.get(session["country"], [])
-                        if h.get("date") == local_date.isoformat()), None)
-        if holiday or local_date.weekday() >= 5:
+        if local_date.weekday() >= 5:
             continue
         opening, closing = get_session_times(session, now)
         for kind, boundary, verb in (("open", opening, "باز شد"), ("close", closing, "بسته شد")):
