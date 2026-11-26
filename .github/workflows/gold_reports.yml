@@ -11,7 +11,8 @@ on:
         options:
           - daily
           - monitor
-          - test_news\n          - test_pre_news
+          - test_news
+          - test_pre_news
   schedule:
     # 09:00 Asia/Kabul (UTC+4:30), every day; Python chooses monthly/weekly/daily report by weekday.
     - cron: "30 4 * * 0-6"
