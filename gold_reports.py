@@ -117,7 +117,7 @@ def monitor_session_boundaries(state, now, holiday_data, ff_events):
     utc_now = now.astimezone(ZoneInfo("UTC"))
     for session in SESSIONS:
         zone = ZoneInfo(session["zone"])
-        local_date = now.astimezone(zone).date()
+        local_date = now.date()
         if local_date.weekday() >= 5:
             continue
         currency = {"AU": "AUD", "JP": "JPY", "GB": "GBP", "US": "USD"}.get(session["country"])
