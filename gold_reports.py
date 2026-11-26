@@ -94,6 +94,8 @@ def session_status_text(now, holiday_data, ff_events):
         holiday = next((h for h in holiday_data.get(session["country"], [])
                         if h.get("date") == local_date.isoformat()), None)
         holiday_reason = holiday.get("name") if holiday else None
+        if local_date.weekday() >= 5:
+            holiday_reason = "تعطیلی آخر هفته بازار فارکس"
         if not holiday_reason and ff_holidays.get(session["country"]):
             holiday_reason = "; ".join(sorted(set(ff_holidays[session["country"]])))
         if holiday_reason:
@@ -115,7 +117,7 @@ def monitor_session_boundaries(state, now, holiday_data):
         local_date = now.astimezone(zone).date()
         holiday = next((h for h in holiday_data.get(session["country"], [])
                         if h.get("date") == local_date.isoformat()), None)
-        if holiday:
+        if holiday or local_date.weekday() >= 5:
             continue
         opening, closing = get_session_times(session, now)
         for kind, boundary, verb in (("open", opening, "باز شد"), ("close", closing, "بسته شد")):
