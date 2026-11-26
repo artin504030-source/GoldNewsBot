@@ -29,6 +29,20 @@ class AnalystTests(unittest.TestCase):
         self.assertIn("تعرفه‌ها", " ".join(result["drivers"]))
         self.assertIn("خنثی", result["direction"])
 
+    def test_company_appointment_is_not_mistaken_for_gold_market_signal(self):
+        result = analyse(self.item("Uta Holzenkamp Appointed New CEO of Heraeus Precious Metals"), "The company announced a new chief executive. " * 10)
+        self.assertIn("خنثی", result["direction"])
+        self.assertIn("رویداد شرکتی", result["events"])
+        self.assertEqual(result["confidence"], "پایین")
+
+    def test_body_mentions_far_below_lead_do_not_create_false_event_labels(self):
+        body = "Gold prices slipped below support before a modest rebound. " + ("Market details about bullion trading. " * 35)
+        body += "Tariffs war sanctions CPI payroll GDP oil OPEC FOMC bank default " * 20
+        result = analyse(self.item("Gold prices slipped below support", summary="Gold market update"), body)
+        self.assertIn("طلا و فلزات گران‌بها", result["events"])
+        self.assertNotIn("تعرفه و تجارت", result["events"])
+        self.assertNotIn("ژئوپلیتیک و امنیت", result["events"])
+
     def test_article_body_improves_context_and_confidence(self):
         body = ("The Federal Reserve said monetary policy will remain restrictive. " * 8)
         result = analyse(self.item("Fed policy update"), body)
