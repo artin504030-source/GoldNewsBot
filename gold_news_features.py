@@ -140,7 +140,7 @@ def archive_news(source, title, summary, link, published, importance, telegram_m
     analysis = analyse_news(title, summary)
     items = load_archive()
     items.append({
-        "source": source, "source_status": source_status(source), "confirmed_sources": [source], "source_count": 1, "confirmation_status": "یک منبع ثبت‌شده", "title": title, "summary": summary[:1200], "link": link,
+        "source": source, "source_status": source_status(source), "confirmed_sources": [source], "source_count": 1, "confirmation_status": "یک منبع ثبت‌شده", "title": title, "summary": summary[:30000], "link": link,
         "published_utc": published, "published_kabul": kabul_time(published),
         "importance": importance, "relevance_score": analysis["score"],
         "relevance": analysis["label"], "category": analysis["category"],
