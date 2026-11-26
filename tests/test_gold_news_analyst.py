@@ -137,6 +137,26 @@ class AnalystTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError): analyst_main.main()
             self.assertEqual(__import__("json").loads(state_path.read_text(encoding="utf-8"))["sent"],[fingerprint(one)])
 
+
+    def test_workflow_run_only_analyzes_news_archived_during_triggered_news_run(self):
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(minutes=2)
+        old = self.item("Older unrelated archive item", published_utc=now.isoformat(), archived_at_utc=(cutoff - timedelta(minutes=1)).isoformat())
+        new = self.item("News sent in this run", published_utc=now.isoformat(), archived_at_utc=(cutoff + timedelta(seconds=10)).isoformat())
+        with TemporaryDirectory() as tmp:
+            archive = Path(tmp)/"archive.json"; state_path = Path(tmp)/"state.json"
+            archive.write_text(__import__("json").dumps([old, new]), encoding="utf-8")
+            cfg = analyst_main.Settings("token", "channel", str(archive), str(state_path), 24, 0, 5, False, False)
+            sent_messages = []
+            with patch.object(analyst_main.Settings, "from_env", return_value=cfg), \
+                 patch.dict(analyst_main.os.environ, {"GOLD_NEWS_ANALYST_TRIGGERED_AFTER": cutoff.isoformat()}), \
+                 patch.object(analyst_main, "fetch_article", return_value={"body": "", "final_url": "https://example.com/a"}), \
+                 patch.object(analyst_main, "render", side_effect=lambda item, article: item["title"]), \
+                 patch.object(analyst_main, "send", side_effect=lambda token, chat, message: sent_messages.append(message)):
+                analyst_main.main()
+            self.assertEqual(sent_messages, ["News sent in this run"])
+            self.assertEqual(__import__("json").loads(state_path.read_text(encoding="utf-8"))["sent"], [fingerprint(new)])
+
     def test_dry_run_does_not_send_or_persist_state(self):
         item = self.item("Dry run headline")
         with TemporaryDirectory() as tmp:
