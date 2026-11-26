@@ -46,7 +46,7 @@ def _event_labels(text):
 def _market_context(snapshot):
     if not snapshot: return [], ["داده بین‌بازاری در این اجرا دریافت نشد"]
     lines, warnings = [], []
-    for key in ("XAUUSD", "DXY", "US10Y", "USOIL"):
+    for key in ("XAUUSD", "DXY", "US10Y_REAL", "US10Y", "USOIL"):
         item = snapshot.get(key)
         if not item:
             warnings.append(f"{key}: داده در دسترس نیست")
@@ -127,12 +127,13 @@ def analyse(item, article_text="", market_snapshot=None):
     market_lines, market_warnings = _market_context(market_snapshot)
     m = market_snapshot or {}
     dxy = m.get("DXY", {})
-    us10y = m.get("US10Y", {})
-    xau = m.get("XAUUSD", {})
+    real_yield = m.get("US10Y_REAL", {})
+    nominal_yield = m.get("US10Y", {})
+    yield_data = real_yield if real_yield.get("status") == "DAILY" else nominal_yield
     dollar_up = (dxy.get("change_pct") is not None and float(dxy["change_pct"]) > 0.15)
     dollar_down = (dxy.get("change_pct") is not None and float(dxy["change_pct"]) < -0.15)
-    yield_up = (us10y.get("change_pct") is not None and float(us10y["change_pct"]) > 0.5)
-    yield_down = (us10y.get("change_pct") is not None and float(us10y["change_pct"]) < -0.5)
+    yield_up = (yield_data.get("change_pct") is not None and float(yield_data["change_pct"]) > 0.5)
+    yield_down = (yield_data.get("change_pct") is not None and float(yield_data["change_pct"]) < -0.5)
     market_headwind = dollar_up or yield_up
     market_support = dollar_down or yield_down
     if market_headwind and market_support:
@@ -164,8 +165,8 @@ def analyse(item, article_text="", market_snapshot=None):
     if company and not labels: confidence = "پایین"
     if hawkish and dovish: confidence = "پایین"
     scenarios = {
-        "bull": "اگر دلار و بازده واقعی تضعیف شوند یا ریسک امن‌خواهی افزایش یابد، طلا می‌تواند حمایت شود؛ شکست ساختار قیمت باید تأیید کند.",
-        "bear": "اگر دلار و بازده واقعی تقویت شوند و تقاضای پناهگاه امن کاهش یابد، طلا می‌تواند تحت فشار قرار گیرد؛ واکنش قیمت باید تأیید کند.",
+        "bull": "اگر دلار و بازده واقعی/اوراق تضعیف شوند یا ریسک امن‌خواهی افزایش یابد، طلا می‌تواند حمایت شود؛ شکست ساختار قیمت باید تأیید کند.",
+        "bear": "اگر دلار و بازده واقعی/اوراق تقویت شوند و تقاضای پناهگاه امن کاهش یابد، طلا می‌تواند تحت فشار قرار گیرد؛ واکنش قیمت باید تأیید کند.",
         "neutral": "اگر خبر از قبل قیمت‌گذاری شده باشد یا دلار، بازده و ریسک سیگنال‌های متناقض بدهند، واکنش طلا می‌تواند محدود/نوسانی باشد.",
     }
     return {
