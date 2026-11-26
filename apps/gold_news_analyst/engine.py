@@ -297,7 +297,7 @@ def analyse(item, article_text="", market_snapshot=None):
         "article_text_ok": source_text_ok,
     }
 
-def eligible(item, now, max_age_hours=24, min_relevance=25):
+def eligible(item, now, max_age_hours=24, min_relevance=0):
     stamp = parse_time(item.get("published_utc"))
     if stamp is None or stamp > now or (now - stamp).total_seconds() > max_age_hours * 3600:
         return False
