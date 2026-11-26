@@ -1,23 +1,11 @@
 name: Gold News Analyst
 
 on:
-  push:
-    branches:
-      - feat/gold-news-analyst-quality-v2
-  pull_request:
   workflow_run:
     workflows:
       - "Gold News Bot"
-      - "Gold News Breaking Monitor"
     types:
       - completed
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: "Preview analysis without posting to Telegram"
-        required: true
-        type: boolean
-        default: true
 
 permissions:
   contents: write
@@ -28,17 +16,17 @@ concurrency:
 
 jobs:
   analyse:
-    # Process completed news runs even if a later, unrelated step failed.
+    # Process completed Gold News runs even if a later, unrelated step failed.
     # Cancelled upstream runs are ignored; archived items are still filtered
     # by archived_at_utc >= workflow_run.run_started_at in the analyst runner.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled'
+    if: github.event.workflow_run.conclusion != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.ref }}
+          ref: main
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
@@ -51,17 +39,17 @@ jobs:
         env:
           GOLD_NEWS_ANALYST_BOT_TOKEN: ${{ secrets.GOLD_NEWS_ANALYST_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
-          DRY_RUN: ${{ (github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)) && 'false' || 'true' }}
-          GOLD_NEWS_ANALYST_TRIGGERED_AFTER: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.run_started_at || '' }}
+          DRY_RUN: "false"
+          GOLD_NEWS_ANALYST_TRIGGERED_AFTER: ${{ github.event.workflow_run.run_started_at }}
           GOLD_NEWS_ANALYST_MAX_AGE_HOURS: "24"
           GOLD_NEWS_ANALYST_MIN_RELEVANCE: "0"
           GOLD_NEWS_ANALYST_MAX_ITEMS: "20"
           GOLD_NEWS_ANALYST_FETCH_ARTICLES: "true"
         run: python -m apps.gold_news_analyst
       - name: Save analyst delivery state
-        if: success() && (github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && inputs.dry_run != true))
+        if: success()
         env:
-          TARGET_BRANCH: ${{ github.event_name == 'workflow_run' && 'main' || github.ref_name }}
+          TARGET_BRANCH: main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
