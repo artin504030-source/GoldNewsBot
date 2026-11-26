@@ -21,18 +21,18 @@ def render(item, article=None, market_snapshot=None):
     safe_link = escape(original_url, quote=True) if isinstance(original_url, str) and original_url.startswith(("https://", "http://")) else ""
     article_ok = bool(article.get("body") and len(article.get("body", "").strip()) >= 300)
     lines = [
-        "🧠 <b>تحلیلگر اخبار طلا | Gold News Analyst</b>",
+        "🧠 <b>تحلیلگر اخبار بازار | Gold News Analyst</b>",
         f"📰 <b>{title}</b>",
         f"منبع ثبت‌شده در آرشیو: {registered_source}",
         f"ناشر/دامنه مقصد: {escape(_domain(original_url))}",
         f"زمان انتشار ثبت‌شده: {local}",
-        f"ارتباط طبقه‌بندی‌شده با طلا: {escape(str(item.get('relevance_score', 'نامشخص')))} از ۱۰۰",
+        f"امتیاز ارتباط با طلا در آرشیو: {escape(str(item.get('relevance_score', 'نامشخص')))} از ۱۰۰",
         f"وضعیت متن اصلی: {'متن مقاله دریافت شد' if article_ok else 'متن کامل دریافت نشد؛ تحلیل محدود به عنوان/خلاصه است'}",
         "",
         "<b>دسته‌ها و محرک‌های شناسایی‌شده</b>",
         escape("، ".join(a["events"]) if a["events"] else "دسته مشخصی با اطمینان شناسایی نشد"),
         "",
-        "<b>اثر احتمالی بر طلا</b>",
+        "<b>اثر احتمالی بر طلا (در صورت ارتباط)</b>",
         f"ارزیابی اولیه: <b>{escape(a['direction'])}</b>",
         *["• " + escape(x) for x in a["drivers"]],
         "",
