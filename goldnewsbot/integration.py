@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 
 from .pipeline_preview import preview_article
 from .classification import classify_news
-from .google_news import GOOGLE_NEWS_HOSTS, resolve_article_url
+from apps.gold_news_analyst.google_news import GOOGLE_NEWS_HOSTS, resolve_article_url
 
 
 def fetch_and_classify_article(url, title, fallback=""):
