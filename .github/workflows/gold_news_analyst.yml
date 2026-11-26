@@ -1,6 +1,9 @@
 name: Gold News Analyst
 
 on:
+  push:
+    branches:
+      - feat/gold-news-analyst-quality-v2
   pull_request:
   workflow_dispatch:
     inputs:
