@@ -20,7 +20,7 @@ LONDON = ZoneInfo("Europe/London")
 ROOT = Path(__file__).resolve().parent
 STATE_FILE = ROOT / "gold_reports_state.json"
 TOKEN = os.environ.get("GOLD_REPORTS_BOT_TOKEN", "")
-CHAT_ID = os.environ.get("CHANNEL_ID", "")
+CHAT_ID = os.environ.get("GOLD_REPORTS_CHANNEL_ID", "")
 UA = {"User-Agent": "Mozilla/5.0 (compatible; GoldReportsBot/1.0)"}
 FF_URL = "https://www.forexfactory.com/calendar"
 GOOGLE_RSS = "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
@@ -217,7 +217,7 @@ def event_message(event, pre=True):
 
 def send_telegram(text):
     if not TOKEN or not CHAT_ID:
-        raise RuntimeError("Missing GOLD_REPORTS_BOT_TOKEN or CHANNEL_ID secret")
+        raise RuntimeError("Missing GOLD_REPORTS_BOT_TOKEN or GOLD_REPORTS_CHANNEL_ID secret")
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     r = requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML",
                                  "disable_web_page_preview": True}, timeout=25)
@@ -303,7 +303,7 @@ def monitor_events(events, state, now):
 
 def main():
     if not TOKEN or not CHAT_ID:
-        raise RuntimeError("Configure GOLD_REPORTS_BOT_TOKEN and CHANNEL_ID GitHub secrets.")
+        raise RuntimeError("Configure GOLD_REPORTS_BOT_TOKEN and GOLD_REPORTS_CHANNEL_ID GitHub secrets.")
     now = now_kabul()
     events = get_calendar(now.date())
     state = load_state()
