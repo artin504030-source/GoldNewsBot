@@ -21,13 +21,13 @@ class ReliabilityTests(unittest.TestCase):
    with self.assertRaises(news_bot.requests.Timeout):news_bot.get_entries('https://example.invalid')
    self.assertEqual(req.call_count,3)
  def test_send_retries_5xx(self):
-  a=Mock(status_code=502);a.json.return_value={};b=Mock(status_code=200);b.json.return_value={'ok':True}
+  a=Mock(status_code=502);a.json.return_value={};b=Mock(status_code=200);b.json.return_value={'ok':True,'result':{'message_id':987}}
   with patch.object(news_bot.requests,'post',side_effect=[a,b]),patch.object(news_bot.time,'sleep'):
-   self.assertTrue(news_bot.send_telegram('hello'))
+   result=news_bot.send_telegram('hello');self.assertEqual(result['message_id'],987)
  def test_send_retries_network_error(self):
-  b=Mock(status_code=200);b.json.return_value={'ok':True}
+  b=Mock(status_code=200);b.json.return_value={'ok':True,'result':{'message_id':654}}
   with patch.object(news_bot.requests,'post',side_effect=[news_bot.requests.ConnectionError('offline'),b]),patch.object(news_bot.time,'sleep'):
-   self.assertTrue(news_bot.send_telegram('hello'))
+   result=news_bot.send_telegram('hello');self.assertEqual(result['message_id'],654)
  def test_limits_have_safe_minimum(self):self.assertGreaterEqual(news_bot.MAX_NEWS_PER_RUN,1);self.assertGreaterEqual(news_bot.MAX_AGE_HOURS,1)
 
  def test_geopolitical_and_energy_feeds_are_enabled(self):
