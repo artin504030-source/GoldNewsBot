@@ -8,8 +8,6 @@ import requests
 import feedparser
 
 from gold_news_features import analyse_news, kabul_time, load_archive, is_duplicate, archive_news, source_status, record_source_confirmation
-from market_analysis import analyze_market_news
-from cross_market_impact import analyze_cross_market_impact
 from breaking_news_analysis import score_breaking_news, format_breaking_badge
 from source_health import record_source_check
 from goldnewsbot.integration import fetch_and_classify_article
@@ -418,40 +416,26 @@ def make_message(source, entry):
     article_text = article_result["body"]
     full_article = article_result["full_article"]
 
-    # Analyze the extracted article body when available, not only the short RSS snippet.
-    analysis_text = article_text or raw_summary
-    market_analysis = analyze_market_news(title, analysis_text)
-    cross_impact = analyze_cross_market_impact(title, analysis_text)
-
     persian_title = translate_to_persian(title)
     time.sleep(TRANSLATION_DELAY)
-    persian_article = translate_to_persian(article_text) if article_text else "متن خبر از منبع قابل دریافت نبود."
-    article_status = "متن کامل خبر از وب‌سایت منبع دریافت شد." if full_article else "⚠️ متن کامل دریافت نشد؛ متن موجود از فید خبری ترجمه شده و ممکن است خلاصه باشد."
-
-    impact = market_analysis.get("potential_effect", "نامشخص")
-    reason = market_analysis.get("reason", "")
-    direct_effects = ", ".join(cross_impact.get("direct_effect", []))
-    indirect_effects = ", ".join(cross_impact.get("indirect_effect", []))
-    analysis_lines = [f"اثر احتمالی: {impact}"]
-    if reason:
-        analysis_lines.append(str(reason))
-    if direct_effects:
-        analysis_lines.append(f"اثر مستقیم: {direct_effects}")
-    if indirect_effects:
-        analysis_lines.append(f"اثر غیرمستقیم: {indirect_effects}")
+    persian_article = translate_to_persian(article_text) if article_text else "متن کامل خبر از منبع قابل دریافت نبود."
+    article_status = (
+        "متن خبر از وب‌سایت منبع دریافت شد."
+        if full_article
+        else "⚠️ وب‌سایت متن کامل را در دسترس نگذاشت؛ متن زیر فقط محتوای موجود در فید خبری است و ممکن است کامل نباشد."
+    )
 
     return (
-        "📰 خبر | Gold News\n\n"
-        f"📰 عنوان: {persian_title}\n"
-        f"📅 تاریخ انتشار: {kabul_published}\n\n"
-        f"🔎 متن خبر:\n{article_status}\n\n{persian_article}\n\n"
-        "🟡 تحلیل کوتاه برای XAUUSD:\n"
-        + "\n".join(analysis_lines)
-        + "\n\n"
-        + f"🏛 منبع: {source}\n"
-        + (f"🔗 لینک خبر اصلی: {link}\n\n" if link else "\n")
-        + "⚠️ این تحلیل بر اساس اطلاعات زمان انتشار خبر است و سیگنال معاملاتی یا توصیه خریدوفروش نیست.\n\n"
-        + "Gold Admin\n"
+        "📰 خبر | Gold News\\n\\n"
+        f"📰 عنوان اصلی: {title}\\n"
+        f"🇮🇷 عنوان فارسی: {persian_title}\\n"
+        f"📅 تاریخ انتشار: {kabul_published}\\n\\n"
+        f"📄 وضعیت متن: {article_status}\\n\\n"
+        "📰 متن کامل خبر (ترجمه فارسی):\\n"
+        f"{persian_article}\\n\\n"
+        + f"🏛 منبع: {source}\\n"
+        + (f"🔗 لینک خبر اصلی: {link}\\n\\n" if link else "\\n")
+        + "Gold Admin\\n"
         + "News Admin"
     )
 
