@@ -35,7 +35,12 @@ jobs:
         env:
           GOLD_PRICED_IN_ANALYST_BOT_TOKEN: ${{ secrets.GOLD_PRICED_IN_ANALYST_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
-        run: python -m apps.gold_priced_in_analyst
+        run: |
+          if [ -z "$GOLD_PRICED_IN_ANALYST_BOT_TOKEN" ]; then
+            echo "Waiting for GOLD_PRICED_IN_ANALYST_BOT_TOKEN secret; bot is not activated yet."
+            exit 0
+          fi
+          python -m apps.gold_priced_in_analyst
       - name: Save Telegram update offset
         if: success()
         run: |
