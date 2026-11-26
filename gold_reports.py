@@ -233,11 +233,26 @@ def send_telegram(text):
         print(f"WARNING: message sent but pin failed: {pin.text[:300]}", file=sys.stderr)
     return message_id
 
+def send_long_telegram(message, limit=3500):
+    lines = message.splitlines()
+    chunks, current = [], ""
+    for line in lines:
+        candidate = (current + "\\n" + line).strip() if current else line
+        if len(candidate) > limit and current:
+            chunks.append(current)
+            current = line
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    for chunk in chunks:
+        send_telegram(chunk)
+
 def report_message(events, heading, period):
     lines = [f"📚 <b>{heading}</b>", f"دوره: <code>{period}</code>", ""]
     if not events:
         lines.append("رویداد مهمی در منبع تقویم پیدا نشد.")
-    for e in events[:35]:
+    for e in events:
         dt = datetime.fromisoformat(e["datetime_kabul"]).strftime("%m-%d %H:%M")
         actual = f" | واقعی: {e['actual']}" if e["actual"] else ""
         lines.append(f"• <b>{html.escape(dt)} | {html.escape(e['currency'])}</b> — {html.escape(e['title'])} "
@@ -262,7 +277,9 @@ def publish_scheduled_report(events, state, now):
         key, heading, period = f"day-{today:%Y-%m-%d}", "اخبار و رویدادهای اقتصادی امروز", str(today)
     if state["daily_sent"].get(key):
         return
-    send_telegram(report_message(chosen, heading, period))
+    # Keep all high/medium-impact events and split long reports under Telegram's message limit.
+    chosen = [e for e in chosen if e["impact"] in ("high", "medium")]
+    send_long_telegram(report_message(chosen, heading, period))
     state["daily_sent"][key] = now.isoformat()
 
 def monitor_events(events, state, now):
