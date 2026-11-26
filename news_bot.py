@@ -494,7 +494,7 @@ def main():
                     stop_sending = True; break
                 seen.add(uid); save_seen(seen)
                 published_dt = entry_datetime(entry)
-                archive_news(source, title, summary, entry.get("link", ""), published_dt.isoformat() if published_dt else "", importance,
+                archive_news(source, title, article_text or summary, entry.get("link", ""), published_dt.isoformat() if published_dt else "", importance,
                              telegram_message_id=sent.get("message_id"), telegram_chat_id=sent.get("chat_id"))
                 archive = load_archive(); sent_count += 1
                 print("News sent successfully:", title)
