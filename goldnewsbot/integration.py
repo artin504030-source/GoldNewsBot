@@ -6,7 +6,7 @@ def fetch_and_classify_article(url,title,fallback=""):
         preview=preview_article(url,title)
         body=(preview.get("body") or "").strip()
         if len(body)>=450:
-            return {"body":body[:12000],"full_article":True,"categories":preview["categories"],"related_markets":preview["related_markets"],"matched_terms":preview["matched_terms"]}
+            return {"body":body[:30000],"full_article":True,"categories":preview["categories"],"related_markets":preview["related_markets"],"matched_terms":preview["matched_terms"]}
     except Exception as exc:
         print("Safe article extraction failed; using RSS fallback:",exc)
     c=classify_news(title,fallback)
