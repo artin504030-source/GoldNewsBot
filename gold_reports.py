@@ -344,10 +344,13 @@ def send_telegram(text):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     r = requests.post(url, json={"chat_id": CHAT_ID, "text": text, "parse_mode": "HTML",
                                  "disable_web_page_preview": True}, timeout=25)
-    r.raise_for_status()
-    data = r.json()
-    if not data.get("ok"):
-        raise RuntimeError(f"Telegram send failed: {data}")
+    try:
+        data = r.json()
+    except ValueError:
+        data = {}
+    if not r.ok or not data.get("ok"):
+        description = data.get("description") or r.text[:300] or "unknown Telegram API error"
+        raise RuntimeError(f"Telegram sendMessage failed (HTTP {r.status_code}): {description}")
     message_id = data["result"]["message_id"]
     pin_url = f"https://api.telegram.org/bot{TOKEN}/pinChatMessage"
     pin = requests.post(pin_url, json={"chat_id": CHAT_ID, "message_id": message_id,
