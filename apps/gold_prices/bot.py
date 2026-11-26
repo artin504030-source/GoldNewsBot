@@ -287,9 +287,18 @@ def save_state(state: dict, path: Path = STATE_PATH) -> None:
 
 
 def telegram_send(text: str) -> None:
-    signature = "<b>Gold Admin</b>\n<b>Prices Admin</b>"
-    if not text.endswith(signature):
-        text = f"{text}\n\n{signature}"
+    signature = "<b>Gold Admin</b>\\n<b>Prices Admin</b>"
+    if text.endswith(signature):
+        text = text[:-len(signature)].rstrip()
+    lines = text.splitlines()
+    title = lines[0].strip() if lines else "گزارش قیمت بازار"
+    body = "\\n".join(lines[1:]).strip()
+    text = (
+        "<b>Gold Channel | XAU</b>\\n\\n"
+        f"<b>عنوان:</b>\\n{title}\\n\\n"
+        f"<b>متن:</b>\\n{body}\\n\\n"
+        f"{signature}"
+    )
     token = os.getenv("GOLD_PRICES_BOT_TOKEN"); chat_id = os.getenv("GOLD_PRICES_CHANNEL_ID")
     if not token or not chat_id:
         raise RuntimeError("Missing GOLD_PRICES_BOT_TOKEN or GOLD_PRICES_CHANNEL_ID GitHub secret")
