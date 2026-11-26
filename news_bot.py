@@ -424,18 +424,20 @@ def make_message(source, entry):
         if full_article
         else "⚠️ وب‌سایت متن کامل را در دسترس نگذاشت؛ متن زیر فقط محتوای موجود در فید خبری است و ممکن است کامل نباشد."
     )
-    return (
-        "📰 خبر | Gold News\\n\\n"
-        f"📰 عنوان اصلی: {title}\\n"
-        f"🇮🇷 عنوان فارسی: {persian_title}\\n"
-        f"📅 تاریخ انتشار: {kabul_published}\\n\\n"
+    title_block = f"📰 خبر | Gold News\\n📰 عنوان اصلی: {title}\\n🇮🇷 عنوان فارسی: {persian_title}"
+    body_block = (
+        f"📅 تاریخ انتشار: {kabul_published}\\n"
         f"📄 وضعیت متن: {article_status}\\n\\n"
         "📰 متن کامل خبر (ترجمه فارسی):\\n"
         f"{persian_article}\\n\\n"
-        + f"🏛 منبع: {source}\\n"
-        + (f"🔗 لینک خبر اصلی: {link}\\n\\n" if link else "\\n")
-        + "Gold Admin\\n"
-        + "News Admin"
+        f"🏛 منبع: {source}\\n"
+        + (f"🔗 لینک خبر اصلی: {link}" if link else "")
+    )
+    return (
+        "<b>Gold Channel | XAU</b>\\n\\n"
+        f"<b>عنوان:</b>\\n{title_block}\\n\\n"
+        f"<b>متن:</b>\\n{body_block}\\n\\n"
+        "<b>Gold Admin</b>\\n<b>News Admin</b>"
     )
 
 def main():
