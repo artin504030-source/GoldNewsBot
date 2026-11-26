@@ -40,7 +40,7 @@ def fetch_public_holidays(state, now):
     results = {}
     for session in SESSIONS:
         zone = ZoneInfo(session["zone"])
-        local_year = now.astimezone(zone).year
+        local_year = now.date().year
         key = f"{session['country']}-{local_year}"
         cached = cache.get(key)
         refresh_due = True
@@ -72,7 +72,7 @@ def fetch_public_holidays(state, now):
 
 def get_session_times(session, now):
     zone = ZoneInfo(session["zone"])
-    local_today = now.astimezone(zone).date()
+    local_today = now.date()
     open_h, open_m = map(int, session["open"].split(":"))
     close_h, close_m = map(int, session["close"].split(":"))
     open_local = datetime.combine(local_today, datetime.min.time().replace(hour=open_h, minute=open_m), zone)
@@ -89,7 +89,7 @@ def session_status_text(now, holiday_data, ff_events):
                 ff_holidays.setdefault(country, []).append({"date": event["date"], "title": event["title"]})
     for session in SESSIONS:
         zone = ZoneInfo(session["zone"])
-        local_date = now.astimezone(zone).date()
+        local_date = now.date()
         open_kabul, close_kabul = get_session_times(session, now)
         holiday = next((h for h in holiday_data.get(session["country"], [])
                         if h.get("date") == local_date.isoformat()), None)
