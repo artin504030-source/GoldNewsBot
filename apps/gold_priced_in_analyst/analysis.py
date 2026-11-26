@@ -11,7 +11,7 @@ YAHOO_SYMBOL = "GC=F"  # COMEX gold futures; used as a transparent proxy, not br
 
 
 def parse_event_time(text):
-    match = re.search(r"(20\\d{2}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2})", text or "")
+    match = re.search(r"(20\d{2}-\d{2}-\d{2}\s+\d{2}:\d{2})", text or "")
     if not match:
         return None
     try:
@@ -23,7 +23,7 @@ def parse_event_time(text):
 
 
 def numeric(value):
-    match = re.search(r"[-+]?[0-9][0-9,]*(?:\\.[0-9]+)?", value or "")
+    match = re.search(r"[-+]?[0-9][0-9,]*(?:\.[0-9]+)?", value or "")
     if not match:
         return None
     try:
@@ -64,7 +64,7 @@ def classify_pre(points, event_dt, forecast, previous, event_name):
     change = (end_p / start[1] - 1) * 100
     abs_move = abs(change)
     if abs_move < 0.20:
-        return "هنوز پیش‌خورشدن قابل‌توجهی مشاهده نمی‌شود", f"تغییر ۱۲ ساعته قرارداد آتی طلا حدود {change:+.2f}% بوده؛ حرکت به‌تنهایی نشانه پیش‌خورشدن نیست."
+        return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", f"تغییر ۱۲ ساعته قرارداد آتی طلا حدود {change:+.2f}% بوده؛ این داده به‌تنهایی ثابت نمی‌کند خبر پیش‌خور نشده باشد."
     if abs_move < 0.55:
         return "تا حدی پیش‌خور شده؛ شواهد محدود", f"تغییر ۱۲ ساعته حدود {change:+.2f}% است؛ اما بدون داده مستقل از انتظارات بازار، نتیجه قطعی نیست."
     return "احتمال پیش‌خورشدن بخشی از انتظارات؛ تأییدنشده", f"حرکت ۱۲ ساعته حدود {change:+.2f}% بوده است. برای اثبات پیش‌خورشدن باید با تغییر انتظارات نرخ بهره/دلار و خبرهای هم‌زمان تطبیق داده شود."
@@ -78,12 +78,15 @@ def classify_post(points, event_dt, actual, forecast):
         return "عدد واقعی یا پیش‌بینی قابل‌مقایسه نیست؛ غافلگیری آماری مشخص نشد."
     surprise = "بالاتر از پیش‌بینی" if actual_n > forecast_n else "پایین‌تر از پیش‌بینی" if actual_n < forecast_n else "مطابق پیش‌بینی"
     before = [(t, p) for t, p in points if event_dt - timedelta(minutes=60) <= t < event_dt]
-    after = [(t, p) for t, p in points if event_dt <= t <= event_dt + timedelta(hours=2)]
+    latest_time = max((t for t, _ in points), default=event_dt)
+    window_end = min(event_dt + timedelta(hours=2), latest_time)
+    after = [(t, p) for t, p in points if event_dt <= t <= window_end]
     if not before or len(after) < 2:
-        return f"عدد واقعی {surprise} بود؛ اما داده کافی برای سنجش واکنش ۲ ساعته پس از زمان انتشار در دسترس نیست."
+        return f"عدد واقعی {surprise} بود؛ اما هنوز داده کافی پس از زمان انتشار برای سنجش واکنش قیمت وجود ندارد."
     p0, p1 = before[-1][1], after[-1][1]
     move = (p1 / p0 - 1) * 100
-    return f"عدد واقعی {surprise} بود. قرارداد آتی طلا از نزدیک زمان انتشار تا حدود ۲ ساعت بعد {move:+.2f}% تغییر کرد. این واکنش مشاهده‌شده است؛ نسبت‌دادن تمام حرکت به خبر بدون کنترل اخبار هم‌زمان قطعی نیست."
+    elapsed = max(0, int((after[-1][0] - event_dt).total_seconds() / 60))
+    return f"عدد واقعی {surprise} بود. قرارداد آتی طلا در {elapsed} دقیقه نخستِ داده‌های موجود پس از انتشار {move:+.2f}% تغییر کرد. این واکنش مشاهده‌شده است؛ نسبت‌دادن تمام حرکت به خبر بدون کنترل اخبار هم‌زمان قطعی نیست."
 
 
 def impact_text(kind, text, fields):
