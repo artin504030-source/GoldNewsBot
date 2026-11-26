@@ -24,8 +24,12 @@ def save_json_atomic(path, data):
         except OSError: pass
         raise
 
-def send(token, chat_id, text):
-    response = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", data={"chat_id": chat_id, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True}, timeout=25)
+def send(token, chat_id, text, reply_to_message_id=None):
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML", "disable_web_page_preview": True}
+    if reply_to_message_id:
+        payload["reply_to_message_id"] = int(reply_to_message_id)
+        payload["allow_sending_without_reply"] = True
+    response = requests.post(f"https://api.telegram.org/bot{token}/sendMessage", data=payload, timeout=25)
     response.raise_for_status(); body = response.json()
     if not body.get("ok"): raise RuntimeError("Telegram rejected analyst message")
     return body
@@ -89,7 +93,8 @@ def main():
             print(message)
             print("\n" + "=" * 72 + "\n")
             continue
-        send(cfg.token, cfg.chat_id, message)
+        reply_to_id = item.get("telegram_message_id")
+        send(cfg.token, item.get("telegram_chat_id") or cfg.chat_id, message, reply_to_message_id=reply_to_id)
         sent.add(fingerprint(item))
         state["sent"] = sorted(sent)[-2000:]
         save_json_atomic(cfg.state_path, state)
