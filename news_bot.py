@@ -443,10 +443,10 @@ def make_message(source, entry):
         "⚠️ این تحلیل بر اساس اطلاعات زمان انتشار خبر است و سیگنال معاملاتی یا توصیه خریدوفروش نیست.",
     ])
     return (
-        "📰 خبر | Gold News\\n\\n"
-        f"📰 عنوان: {persian_title}\\n"
-        + "\\n".join(body_lines)
-        + "\\n\\nGold Admin\\nNews Admin"
+        "📰 خبر | Gold News\n\n"
+        f"📰 عنوان: {persian_title}\n"
+        + "\n".join(body_lines)
+        + "\n\nGold Admin\nNews Admin"
     )
 
 def main():
