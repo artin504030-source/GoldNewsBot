@@ -343,38 +343,46 @@ def event_message(event, pre=True):
               "", "<b>Gold Admin</b>", "<b>Reports Admin</b>"]
     return "\n".join(lines)
 
-def test_news_message():
-    # One manually triggered sample based on a current Reuters report; it is clearly labeled as a test.
+def test_news_message(events):
+    # Sample strictly from an event listed in the Forex Factory economic calendar.
+    event = next((e for e in events if "tokyo core cpi" in e["title"].lower()), None)
+    if event is None:
+        event = next((e for e in events if e.get("forecast") or e.get("previous")), None)
+    if event is None:
+        raise RuntimeError("No suitable Forex Factory calendar event found for the test message.")
+    when = datetime.fromisoformat(event["datetime_kabul"]).strftime("%Y-%m-%d %H:%M")
+    impact_fa = {"high": "زیاد", "medium": "متوسط", "low": "کم"}.get(event["impact"], "نامشخص")
+    title_fa = "شاخص قیمت مصرف‌کننده هسته‌ای توکیو (سالانه)" if "tokyo core cpi" in event["title"].lower() else event["title"]
     lines = [
-        "🧪 <b>پیام آزمایشی خبر | Gold Reports</b>",
+        "🧪 <b>پیام آزمایشی رویداد اقتصادی | Gold Reports</b>",
         "",
-        "📰 <b>عنوان اصلی:</b> Gold drifts lower as Fed rate-hike fears loom",
-        "🇮🇷 <b>عنوان فارسی:</b> طلا در پی افزایش انتظارات برای افزایش نرخ بهره فدرال رزرو تحت فشار قرار گرفت",
-        "📅 <b>تاریخ خبر:</b> 2026-11-26",
-        "🗞 <b>منبع:</b> Reuters",
+        f"📌 <b>رویداد:</b> {html.escape(title_fa)}",
+        f"🌍 <b>کشور / ارز:</b> ژاپن / {html.escape(event['currency'])}",
+        f"📅 <b>تاریخ و ساعت انتشار:</b> <code>{when}</code> (کابل)",
+        f"⚠️ <b>اهمیت در Forex Factory:</b> {impact_fa}",
+        f"📊 <b>عدد واقعی:</b> {html.escape(event['actual'] or 'هنوز منتشر نشده')}",
+        f"🔮 <b>پیش‌بینی:</b> {html.escape(event['forecast'] or 'در تقویم ثبت نشده')}",
+        f"📚 <b>عدد قبلی:</b> {html.escape(event['previous'] or 'در تقویم ثبت نشده')}",
         "",
-        "<b>خلاصه خبر:</b>",
-        "رویترز گزارش داد که قیمت جهانی طلا در معاملات پنج‌شنبه حدود 0.3٪ کاهش یافت و به 3,571.17 دلار در هر اونس رسید. تداوم فشارهای تورمی آمریکا و افزایش انتظار بازار برای بالا رفتن دوباره نرخ بهره فدرال رزرو از عوامل فشار بر طلا عنوان شده‌اند. بازارهای آمریکا به مناسبت Thanksgiving تعطیل بودند.",
+        "<b>سه سناریوی احتمالی</b>",
+        "1️⃣ <b>مطابق پیش‌بینی:</b> اگر عدد واقعی نزدیک 3.0٪ باشد، واکنش اولیه ین و طلا ممکن است محدود باشد؛ تمرکز بازار به جزئیات و انتظارات نرخ بهره ژاپن معطوف می‌شود.",
+        "2️⃣ <b>بالاتر از پیش‌بینی:</b> تورم هسته‌ای قوی‌تر می‌تواند انتظارات سیاست پولی انقباضی‌تر بانک ژاپن را تقویت و از ین حمایت کند؛ اثر بر طلا غیرمستقیم و وابسته به واکنش دلار و بازده‌هاست.",
+        "3️⃣ <b>پایین‌تر از پیش‌بینی:</b> تورم ضعیف‌تر می‌تواند انتظارات افزایش نرخ بهره را کاهش و بر ین فشار وارد کند؛ جهت نهایی طلا به حرکت دلار و بازده اوراق آمریکا بستگی دارد.",
         "",
-        "<b>اهمیت خبر برای بازار:</b> <b>زیاد</b>",
+        "<b>نمادهای مرتبط:</b>",
+        "• <b>JPY pairs:</b> واکنش مستقیم‌تر به داده تورم ژاپن.",
+        "• <b>XAUUSD:</b> اثر غیرمستقیم؛ از مسیر دلار، بازده اوراق و انتظارات نرخ بهره.",
+        "• <b>DXY:</b> برای سنجش واکنش هم‌زمان دلار و اثر آن بر طلا زیر نظر گرفته شود.",
         "",
-        "<b>نمادهای مرتبط و اثر احتمالی:</b>",
-        "• <b>XAUUSD:</b> فشار نزولی؛ نرخ بهره بالاتر هزینه فرصت نگهداری طلا را افزایش می‌دهد.",
-        "• <b>DXY / USD:</b> احتمال حمایت از دلار در صورت تقویت انتظارات انقباضی فدرال رزرو.",
-        "• <b>بازده اوراق آمریکا:</b> در صورت افزایش انتظارات نرخ بهره، احتمال فشار صعودی بر بازده‌ها وجود دارد.",
+        "<b>جمع‌بندی:</b> این رویداد به‌تنهایی جهت قطعی طلا را تعیین نمی‌کند. واکنش واقعی بازار و داده‌های هم‌زمان باید بررسی شوند.",
+        "🔗 <b>منبع رویداد:</b> <a href=\\\"https://www.forexfactory.com/calendar\\\">تقویم اقتصادی Forex Factory</a>",
         "",
-        "<b>جمع‌بندی اثر بر طلا:</b>",
-        "خبر در مجموع برای طلا منفی ارزیابی می‌شود؛ اما اگر افزایش نرخ بهره قبلاً در قیمت‌ها لحاظ شده باشد یا دلار و بازده اوراق عقب‌نشینی کنند، واکنش طلا می‌تواند محدود یا معکوس شود.",
-        "",
-        "<b>ریسک و نکته مهم:</b>",
-        "به دلیل تعطیلی Thanksgiving و نقدشوندگی کمتر بازار آمریکا، نوسان و فاصله خریدوفروش ممکن است غیرعادی باشد. این پیام نمونه‌ای برای نمایش قالب است و سیگنال معاملاتی نیست.",
-        "",
-        "🔗 <b>لینک منبع:</b> <a href=\"https://www.reuters.com/world/india/gold-steadies-after-hitting-over-1-year-low-fed-outlook-focus-2026-11-26/\">مشاهده گزارش Reuters</a>",
+        "<i>این پیام صرفاً آزمایشی است و توصیه یا سیگنال معاملاتی نیست.</i>",
         "",
         "<b>Gold Admin</b>",
         "<b>Reports Admin</b>"
     ]
-    return "\n".join(lines)
+    return "\\n".join(lines)
 
 def send_telegram(text):
     if not TOKEN or not CHAT_ID:
@@ -476,7 +484,7 @@ def main():
     if mode == "daily":
         publish_scheduled_report(events, state, now, holiday_data)
     elif mode == "test_news":
-        send_telegram(test_news_message())
+        send_telegram(test_news_message(events))
     else:
         monitor_events(events, state, now)
         monitor_session_boundaries(state, now, holiday_data, events)
