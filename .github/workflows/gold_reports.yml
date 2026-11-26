@@ -37,6 +37,8 @@ jobs:
           python-version: "3.12"
       - name: Install isolated dependencies
         run: pip install -r gold_reports_requirements.txt
+      - name: Validate Python syntax
+        run: python -m py_compile gold_reports.py
       - name: Run Gold Reports
         env:
           GOLD_REPORTS_BOT_TOKEN: ${{ secrets.GOLD_REPORTS_BOT_TOKEN }}
