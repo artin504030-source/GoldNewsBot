@@ -122,6 +122,95 @@ def _scenarios(labels, company):
         "اگر خبر از قبل قیمت‌گذاری شده باشد یا داده‌های بازار متناقض باشند، واکنش طلا می‌تواند محدود/نوسانی باشد.",
     )
 
+
+# Broad instrument universe used by the analyst. A symbol is listed only when
+# the event has a defensible transmission channel to that instrument.
+FX_PAIRS = {
+    "EURUSD": ("EUR", "USD"), "GBPUSD": ("GBP", "USD"), "AUDUSD": ("AUD", "USD"),
+    "NZDUSD": ("NZD", "USD"), "USDJPY": ("USD", "JPY"), "USDCAD": ("USD", "CAD"),
+    "USDCHF": ("USD", "CHF"), "EURAUD": ("EUR", "AUD"), "GBPAUD": ("GBP", "AUD"),
+    "EURGBP": ("EUR", "GBP"), "EURJPY": ("EUR", "JPY"), "GBPJPY": ("GBP", "JPY"),
+    "AUDJPY": ("AUD", "JPY"), "NZDJPY": ("NZD", "JPY"), "CADJPY": ("CAD", "JPY"),
+}
+CURRENCY_TERMS = {
+    "USD": ("united states", "u.s.", "us ", "american", "federal reserve", "fed ", "fomc", "treasury", "dollar"),
+    "EUR": ("eurozone", "euro area", "european central bank", "ecb", "euro "),
+    "GBP": ("united kingdom", "britain", "british", "bank of england", "boe", "sterling", "pound"),
+    "JPY": ("japan", "bank of japan", "boj", "yen"),
+    "AUD": ("australia", "reserve bank of australia", "rba", "australian dollar"),
+    "NZD": ("new zealand", "reserve bank of new zealand", "rbnz", "kiwi"),
+    "CAD": ("canada", "bank of canada", "boc", "canadian dollar"),
+    "CHF": ("switzerland", "swiss national bank", "snb", "franc"),
+}
+def _symbol_impacts(text, labels, hawkish, dovish, above, below, risk_off, risk_easing, supply_shock, company):
+    """Map a news event to instruments through explicit macro/risk/commodity channels."""
+    currency_bias = {}
+    # US macro releases and Fed policy are USD drivers even when the publisher omits
+    # the word 'United States'. Other currencies require a country/central-bank cue.
+    mentioned = {ccy for ccy, terms in CURRENCY_TERMS.items() if any(term in text for term in terms)}
+    if any(x in labels for x in ("سیاست پولی و نرخ بهره", "تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی")) and not mentioned:
+        mentioned.add("USD")
+    positive_surprise = (above and (("تورم و شاخص قیمت" in labels) or ("اشتغال و دستمزد" in labels) or ("رشد اقتصادی" in labels)))
+    negative_surprise = (below and (("تورم و شاخص قیمت" in labels) or ("اشتغال و دستمزد" in labels) or ("رشد اقتصادی" in labels)))
+    if hawkish or positive_surprise:
+        bias = 1
+    elif dovish or negative_surprise:
+        bias = -1
+    else:
+        bias = 0
+    for ccy in mentioned:
+        currency_bias[ccy] = bias
+    if risk_off and not risk_easing:
+        for ccy, value in (("USD", 1), ("JPY", 1), ("CHF", 1), ("AUD", -1), ("NZD", -1)):
+            currency_bias[ccy] = currency_bias.get(ccy, 0) + value
+    if risk_easing:
+        for ccy, value in (("USD", -1), ("JPY", -1), ("CHF", -1), ("AUD", 1), ("NZD", 1)):
+            currency_bias[ccy] = currency_bias.get(ccy, 0) + value
+
+    impacts = []
+    def add(symbol, score, reason):
+        if score > 0:
+            impacts.append({"symbol": symbol, "impact": "صعودی بالقوه", "reason": reason})
+        elif score < 0:
+            impacts.append({"symbol": symbol, "impact": "نزولی بالقوه", "reason": reason})
+        elif score == 0:
+            impacts.append({"symbol": symbol, "impact": "خنثی/نامشخص", "reason": reason})
+
+    for symbol, (base, quote) in FX_PAIRS.items():
+        if base in currency_bias or quote in currency_bias:
+            score = currency_bias.get(base, 0) - currency_bias.get(quote, 0)
+            if score:
+                add(symbol, score, f"اثر نسبی خبر بر {base} در برابر {quote}")
+    if "USD" in currency_bias:
+        add("DXY", currency_bias["USD"], "تغییر احتمالی قدرت دلار در برابر سبد ارزها")
+
+    macro_gold = bool(set(labels) & {"سیاست پولی و نرخ بهره", "تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی", "تعرفه و تجارت", "ژئوپلیتیک و امنیت", "بانک‌ها و بازار مالی", "طلا و فلزات گران‌بها"})
+    if macro_gold and not company:
+        gold_score = 0
+        if risk_off and not risk_easing: gold_score += 1
+        if risk_easing: gold_score -= 1
+        if dovish and not hawkish: gold_score += 1
+        if hawkish and not dovish: gold_score -= 1
+        if positive_surprise and not dovish: gold_score -= 1
+        if negative_surprise and not hawkish: gold_score += 1
+        add("XAUUSD", gold_score, "کانال نرخ بهره/دلار و تقاضای پناهگاه امن؛ اثر نهایی به واکنش بازار وابسته است")
+        if "طلا و فلزات گران‌بها" in labels or "نفت و انرژی" in labels or "رشد اقتصادی" in labels:
+            add("XAGUSD", gold_score + (1 if "رشد اقتصادی" in labels and positive_surprise else 0), "کانال فلزات گران‌بها و تقاضای صنعتی")
+    if "نفت و انرژی" in labels or supply_shock:
+        oil_score = 1 if supply_shock or (risk_off and not risk_easing) else -1 if risk_easing else 0
+        add("USOIL", oil_score, "ریسک عرضه، مسیر حمل‌ونقل و انتظارات تقاضای انرژی")
+        add("UKOIL", oil_score, "ریسک عرضه جهانی نفت و مسیر حمل‌ونقل")
+    if "ژئوپلیتیک و امنیت" in labels or "بانک‌ها و بازار مالی" in labels or "رشد اقتصادی" in labels or "سیاست پولی و نرخ بهره" in labels:
+        index_score = -1 if risk_off and not risk_easing else 1 if risk_easing else -1 if hawkish and not dovish else 1 if dovish and not hawkish else 0
+        reason = "اثر احتمالی ریسک‌پذیری، رشد و انتظارات نرخ بهره بر سهام"
+        for symbol in ("DJIUSD", "NAS100", "SPX500"):
+            add(symbol, index_score, reason)
+    if "ژئوپلیتیک و امنیت" in labels or "بانک‌ها و بازار مالی" in labels:
+        crypto_score = -1 if risk_off and not risk_easing else 1 if risk_easing else 0
+        add("BTCUSD", crypto_score, "حساسیت دارایی‌های پرریسک به ریسک‌پذیری بازار")
+        add("ETHUSD", crypto_score, "حساسیت دارایی‌های پرریسک به ریسک‌پذیری بازار")
+    return impacts
+
 def analyse(item, article_text="", market_snapshot=None):
     title = str(item.get("title", ""))
     summary = str(item.get("summary", ""))
@@ -192,41 +281,11 @@ def analyse(item, article_text="", market_snapshot=None):
     if not drivers:
         drivers.append("از عنوان و ابتدای متن محرک مشخص و قابل دفاعی برای طلا استخراج نشد؛ جهت‌سازی انجام نمی‌شود.")
 
-    market_lines, market_warnings = _market_context(market_snapshot)
-    m = market_snapshot or {}
-    dxy = m.get("DXY", {})
-    real_yield = m.get("US10Y_REAL", {})
-    nominal_yield = m.get("US10Y", {})
-    # Ignore stale/unavailable quotes when deriving directional confirmation.
-    dxy_usable = dxy.get("status") in ("LIVE", "DELAYED")
-    dollar_change = dxy.get("change_pct") if dxy_usable else None
-    if real_yield.get("status") == "DAILY":
-        yield_data = real_yield
-    elif nominal_yield.get("status") in ("LIVE", "DELAYED"):
-        yield_data = nominal_yield
-    else:
-        yield_data = {}
-    yield_change_points = yield_data.get("change_points")
-    dollar_up = dollar_change is not None and float(dollar_change) > 0.15
-    dollar_down = dollar_change is not None and float(dollar_change) < -0.15
-    # Treasury/TIPS yields are quoted in percent; use percentage-point (basis-point) deltas.
-    yield_up = yield_change_points is not None and float(yield_change_points) >= 0.05
-    yield_down = yield_change_points is not None and float(yield_change_points) <= -0.05
-    market_headwind = dollar_up or yield_up
-    market_support = dollar_down or yield_down
-    if market_headwind and market_support:
-        market_reaction = "داده‌های بازار متناقض‌اند؛ واکنش خالص روشن نیست."
-    elif market_headwind:
-        market_reaction = "داده‌های موجود دلار/بازده را در سمت فشار بر طلا نشان می‌دهند."
-    elif market_support:
-        market_reaction = "داده‌های موجود دلار/بازده را در سمت حمایت از طلا نشان می‌دهند."
-    else:
-        market_reaction = "جهت قابل اتکای دلار/بازده از داده‌های موجود قابل تأیید نیست."
-    if dollar_up or dollar_down or yield_up or yield_down:
-        drivers.append(market_reaction)
-
-    bullish_points = int(dovish and not hawkish) + int(below and inflation) + int(risk_off and not risk_easing) + int(market_support)
-    bearish_points = int(hawkish and not dovish) + int(above and inflation) + int(market_headwind) + int(risk_easing)
+    # Market snapshots are intentionally not used: the report is news-only.
+    market_lines, market_warnings = [], []
+    market_headwind = market_support = False
+    bullish_points = int(dovish and not hawkish) + int(below and inflation) + int(risk_off and not risk_easing)
+    bearish_points = int(hawkish and not dovish) + int(above and inflation) + int(risk_easing)
     if company:
         direction = "خنثی؛ خبر شرکتی و فاقد محرک مستقیم طلا"
     elif bullish_points >= 2 and bearish_points == 0:
@@ -240,13 +299,14 @@ def analyse(item, article_text="", market_snapshot=None):
 
     source_text_ok = len(body.strip()) >= 300
     macro_events = any(x in labels for x in ("سیاست پولی و نرخ بهره", "تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی", "تعرفه و تجارت", "ژئوپلیتیک و امنیت", "نفت و انرژی", "بانک‌ها و بازار مالی"))
-    confidence = "متوسط" if source_text_ok and macro_events and (market_headwind or market_support or bullish_points + bearish_points >= 2) else "پایین"
+    confidence = "متوسط" if source_text_ok and macro_events and bullish_points + bearish_points >= 1 else "پایین"
     if not source_text_ok: confidence = "پایین؛ متن کامل خبر در دسترس نیست"
     if company or (hawkish and dovish): confidence = "پایین"
     bull, bear, neutral = _scenarios(labels, company)
+    symbol_impacts = _symbol_impacts(combined, labels, hawkish, dovish, above, below, risk_off, risk_easing, supply_shock, company)
     return {
         "direction": direction, "drivers": drivers, "confidence": confidence,
-        "events": labels, "market_lines": market_lines, "market_warnings": market_warnings,
+        "events": labels, "market_lines": [], "market_warnings": [], "symbol_impacts": symbol_impacts,
         "bull": bull, "bear": bear, "neutral": neutral,
         "horizon": "اثر اولیه: ساعت‌ها تا چند روز؛ اثر سیاستی/کلان: چند هفته تا چند ماه، بسته به نوع رویداد.",
         "invalidate": "با انتشار داده معتبر جدید، تغییر انتظارات نرخ بهره، چرخش دلار/بازده واقعی یا شکست ساختار قیمت، سناریو بازبینی شود.",
