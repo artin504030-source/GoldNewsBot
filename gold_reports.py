@@ -48,7 +48,7 @@ def get_calendar(month_date=None):
     response = requests.get(url, headers=UA, timeout=25)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
-    tz_match = re.search(r"Calendar Time Zone:\\s*([A-Za-z_]+/[A-Za-z_]+)", soup.get_text(" ", strip=True))
+    tz_match = re.search(r"Calendar Time Zone:\s*([A-Za-z_]+/[A-Za-z_]+)", soup.get_text(" ", strip=True))
     calendar_tz = ZoneInfo(tz_match.group(1)) if tz_match else ZoneInfo("UTC")
     events = []
     current_day = None
@@ -163,6 +163,24 @@ def scenario_text(event, articles):
                    "عدد ضعیف‌تر از انتظار می‌تواند ارز مربوطه را تحت فشار قرار دهد؛ واکنش طلا وابسته به اثر آن بر دلار و نرخ‌هاست.")
     return bias, label, impacts
 
+def compare_actual_forecast(actual, forecast):
+    def number(value):
+        match = re.search(r"[-+]?[0-9][0-9,]*(?:\.[0-9]+)?", value or "")
+        if not match:
+            return None
+        try:
+            return float(match.group(0).replace(",", ""))
+        except ValueError:
+            return None
+    a, f = number(actual), number(forecast)
+    if a is None or f is None:
+        return "به دلیل نبودن عدد قابل‌مقایسه، نتیجه عددی مشخص نیست."
+    if a > f:
+        return "عدد واقعی بالاتر از پیش‌بینی منتشر شد."
+    if a < f:
+        return "عدد واقعی پایین‌تر از پیش‌بینی منتشر شد."
+    return "عدد واقعی مطابق پیش‌بینی منتشر شد."
+
 def event_message(event, pre=True):
     articles = analyst_sources(event)
     bias, label, impacts = scenario_text(event, articles)
@@ -186,6 +204,7 @@ def event_message(event, pre=True):
     else:
         lines += ["", f"عدد واقعی: <b>{html.escape(event['actual'] or 'هنوز در منبع ثبت نشده')}</b>",
                   f"پیش‌بینی: {html.escape(event['forecast'] or 'ناموجود')}",
+                  f"مقایسه: {html.escape(compare_actual_forecast(event['actual'], event['forecast']))}",
                   f"عدد قبلی: {html.escape(event['previous'] or 'ناموجود')}",
                   "", "نتیجه با پیش‌بینی مقایسه می‌شود؛ اصلاح عدد قبلی فقط در صورت مشاهده تغییر در منبع اعلام می‌شود."]
     for a in articles[:4]:
