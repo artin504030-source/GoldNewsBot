@@ -107,7 +107,7 @@ class AnalystTests(unittest.TestCase):
                 if len(calls)==2:
                     saved=__import__("json").loads(state_path.read_text(encoding="utf-8"))["sent"]
                     self.assertEqual(saved,[fingerprint(one)]); raise RuntimeError("second send failed")
-            with patch.object(analyst_main.Settings,"from_env",return_value=cfg), patch.object(analyst_main,"send",side_effect=fake_send), patch.object(analyst_main,"fetch_market_snapshot",return_value={}):
+            with patch.object(analyst_main.Settings,"from_env",return_value=cfg), patch.object(analyst_main,"send",side_effect=fake_send):
                 with self.assertRaises(RuntimeError): analyst_main.main()
             self.assertEqual(__import__("json").loads(state_path.read_text(encoding="utf-8"))["sent"],[fingerprint(one)])
 
