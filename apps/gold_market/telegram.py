@@ -23,9 +23,19 @@ SIGNATURE_LINES = ("Gold Admin", "Market Admin")
 
 
 def _telegram_lines(report: str) -> list[str]:
-    """Escape every text line and bold only known, static section headings."""
-    rendered = []
-    for line in report.splitlines():
+    """Apply the shared channel/title/body layout and escape report content."""
+    source_lines = report.splitlines()
+    title = source_lines[0].strip() if source_lines else "گزارش وضعیت بازار"
+    body_lines = source_lines[1:]
+    rendered = [
+        "<b>Gold Channel | XAU</b>",
+        "",
+        "<b>عنوان:</b>",
+        escape(title, quote=True),
+        "",
+        "<b>متن:</b>",
+    ]
+    for line in body_lines:
         safe = escape(line, quote=True)
         if line in SECTION_HEADINGS:
             rendered.append(f"<b>{safe}</b>")
