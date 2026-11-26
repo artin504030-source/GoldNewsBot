@@ -36,7 +36,7 @@ class AnalystTests(unittest.TestCase):
         self.assertEqual(result["confidence"], "پایین")
 
     def test_body_mentions_far_below_lead_do_not_create_false_event_labels(self):
-        body = "Gold prices slipped below support before a modest rebound. " + ("Market details about bullion trading. " * 35)
+        body = "Gold prices slipped below support before a modest rebound. " + ("Market details about bullion trading. " * 60)
         body += "Tariffs war sanctions CPI payroll GDP oil OPEC FOMC bank default " * 20
         result = analyse(self.item("Gold prices slipped below support", summary="Gold market update"), body)
         self.assertIn("طلا و فلزات گران‌بها", result["events"])
