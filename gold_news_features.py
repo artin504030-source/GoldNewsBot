@@ -136,7 +136,7 @@ def record_source_confirmation(source, title, link):
     return len(sources)
 
 
-def archive_news(source, title, summary, link, published, importance):
+def archive_news(source, title, summary, link, published, importance, telegram_message_id=None, telegram_chat_id=None):
     analysis = analyse_news(title, summary)
     items = load_archive()
     items.append({
@@ -144,7 +144,9 @@ def archive_news(source, title, summary, link, published, importance):
         "published_utc": published, "published_kabul": kabul_time(published),
         "importance": importance, "relevance_score": analysis["score"],
         "relevance": analysis["label"], "category": analysis["category"],
-        "archived_at_utc": datetime.now(timezone.utc).isoformat()
+        "archived_at_utc": datetime.now(timezone.utc).isoformat(),
+        "telegram_message_id": telegram_message_id,
+        "telegram_chat_id": telegram_chat_id
     })
     save_archive(items)
 

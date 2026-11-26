@@ -359,6 +359,7 @@ def send_telegram(message):
         return False
 
     parts = _telegram_parts(message)
+    first_message_id = None
     for part_number, part in enumerate(parts, start=1):
         last_error = None
         delivered = False
@@ -389,6 +390,8 @@ def send_telegram(message):
                 response.raise_for_status()
                 if not result.get("ok"):
                     raise RuntimeError(str(result))
+                if first_message_id is None:
+                    first_message_id = (result.get("result") or {}).get("message_id")
                 delivered = True
                 break
             except requests.RequestException as error:
@@ -401,7 +404,7 @@ def send_telegram(message):
             raise TelegramRateLimitError(f"Telegram delivery failed for part {part_number}.")
         if part_number < len(parts):
             time.sleep(0.4)
-    return True
+    return {"message_id": first_message_id, "chat_id": CHANNEL_ID}
 
 
 def make_message(source, entry):
@@ -508,7 +511,8 @@ def main():
                     stop_sending = True; break
                 seen.add(uid); save_seen(seen)
                 published_dt = entry_datetime(entry)
-                archive_news(source, title, summary, entry.get("link", ""), published_dt.isoformat() if published_dt else "", importance)
+                archive_news(source, title, summary, entry.get("link", ""), published_dt.isoformat() if published_dt else "", importance,
+                             telegram_message_id=sent.get("message_id"), telegram_chat_id=sent.get("chat_id"))
                 archive = load_archive(); sent_count += 1
                 print("News sent successfully:", title)
                 time.sleep(3)
