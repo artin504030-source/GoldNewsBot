@@ -415,14 +415,25 @@ def make_message(source, entry):
     article_result = fetch_and_classify_article(link, title, raw_summary)
     article_text = article_result["body"]
     full_article = article_result["full_article"]
+    publisher_link = article_result.get("url") or link
+
+    source_info = entry.get("source")
+    if isinstance(source_info, dict):
+        publisher_name = source_info.get("title") or source_info.get("name")
+    else:
+        publisher_name = getattr(source_info, "title", None) or source_info
+    if not publisher_name:
+        title_parts = title.rsplit(" - ", 1)
+        publisher_name = title_parts[-1] if len(title_parts) == 2 else source
+    publisher_name = clean_text(str(publisher_name or source))
 
     persian_title = translate_to_persian(title)
     time.sleep(TRANSLATION_DELAY)
-    persian_article = translate_to_persian(article_text) if article_text else "متن کامل خبر از منبع قابل دریافت نبود."
+    persian_article = translate_to_persian(article_text) if article_text else "متن خبر از ناشر قابل دریافت نبود."
     article_status = (
         ""
         if full_article
-        else "⚠️ متن کامل دریافت نشد؛ متن موجود از فید خبری ترجمه شده و ممکن است خلاصه باشد."
+        else "⚠️ متن کامل از ناشر در دسترس نبود؛ متن موجود از خبر ارسال شده است و ممکن است ناقص باشد."
     )
     body_lines = [
         f"📅 تاریخ انتشار: {kabul_published}",
@@ -434,10 +445,10 @@ def make_message(source, entry):
     body_lines.extend([
         persian_article,
         "",
-        f"🏛 منبع: {source}",
+        f"🏛 منبع: {publisher_name}",
     ])
-    if link:
-        body_lines.append(f"🔗 لینک خبر اصلی: {link}")
+    if publisher_link:
+        body_lines.append(f"🔗 لینک منبع: {publisher_link}")
     body_lines.extend([
         "",
         "⚠️ این تحلیل بر اساس اطلاعات زمان انتشار خبر است و سیگنال معاملاتی یا توصیه خریدوفروش نیست.",

@@ -26,6 +26,12 @@ class ArticleExtractionTests(unittest.TestCase):
         self.assertIn('OPEC crude oil supply disruption', text)
         self.assertNotIn('menu noise', text)
 
+    def test_preserves_short_partial_publisher_paragraphs(self):
+        html = '<article><p>Only the first two paragraphs are currently available.</p><p>Second paragraph with additional verified article details.</p></article>'
+        text = extract_text(html)
+        self.assertIn('Only the first two paragraphs', text)
+        self.assertIn('additional verified article details', text)
+
     def test_meta_description_is_fallback(self):
         description = 'Central bank officials discussed interest rates and inflation. ' * 3
         text = extract_text('<meta name="description" content="' + description + '">')

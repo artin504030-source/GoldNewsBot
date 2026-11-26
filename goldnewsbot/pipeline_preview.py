@@ -60,7 +60,7 @@ class _ArticleParser(HTMLParser):
             return
         if tag == "p" and self.paragraph_depth:
             value = re.sub(r"\s+", " ", " ".join(self.current)).strip()
-            if len(value) >= 35:
+            if value:
                 self.fallback_paragraphs.append(value)
                 if self.article_depth:
                     self.paragraphs.append(value)
@@ -91,7 +91,7 @@ def _article_bodies(value):
     bodies = []
     if isinstance(value, dict):
         body = value.get("articleBody")
-        if isinstance(body, str) and len(body.strip()) >= 80:
+        if isinstance(body, str) and body.strip():
             bodies.append(body.strip())
         for child in value.values():
             bodies.extend(_article_bodies(child))
@@ -101,7 +101,7 @@ def _article_bodies(value):
     return bodies
 
 
-def extract_text(html, *, max_chars=30000, min_chars=80):
+def extract_text(html, *, max_chars=30000, min_chars=1):
     parser = _ArticleParser()
     parser.feed(html or "")
     # Prefer publisher-supplied schema.org articleBody, then article/main paragraphs.
