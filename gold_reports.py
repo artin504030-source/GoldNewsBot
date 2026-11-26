@@ -375,14 +375,14 @@ def test_news_message(events):
         "• <b>DXY:</b> برای سنجش واکنش هم‌زمان دلار و اثر آن بر طلا زیر نظر گرفته شود.",
         "",
         "<b>جمع‌بندی:</b> این رویداد به‌تنهایی جهت قطعی طلا را تعیین نمی‌کند. واکنش واقعی بازار و داده‌های هم‌زمان باید بررسی شوند.",
-        "🔗 <b>منبع رویداد:</b> <a href=\\\"https://www.forexfactory.com/calendar\\\">تقویم اقتصادی Forex Factory</a>",
+        '🔗 <b>منبع رویداد:</b> <a href="https://www.forexfactory.com/calendar">تقویم اقتصادی Forex Factory</a>',
         "",
         "<i>این پیام صرفاً آزمایشی است و توصیه یا سیگنال معاملاتی نیست.</i>",
         "",
         "<b>Gold Admin</b>",
         "<b>Reports Admin</b>"
     ]
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 def send_telegram(text):
     if not TOKEN or not CHAT_ID:
