@@ -95,35 +95,36 @@ def _scenarios(labels, company):
     )
 
 
-# Broad instrument universe used by the analyst. A symbol is listed only when
-# the event has a defensible transmission channel to that instrument.
+# Exact tradable universe from Gold Prices Bot (16 instruments).
+SYMBOL_UNIVERSE = (
+    "XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD",
+    "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD",
+    "US30", "USTEC", "US500", "DE30",
+    "USOIL", "UKOIL", "XNGUSD",
+)
 FX_PAIRS = {
-    "EURUSD": ("EUR", "USD"), "GBPUSD": ("GBP", "USD"), "AUDUSD": ("AUD", "USD"),
-    "NZDUSD": ("NZD", "USD"), "USDJPY": ("USD", "JPY"), "USDCAD": ("USD", "CAD"),
-    "USDCHF": ("USD", "CHF"), "EURAUD": ("EUR", "AUD"), "GBPAUD": ("GBP", "AUD"),
-    "EURGBP": ("EUR", "GBP"), "EURJPY": ("EUR", "JPY"), "GBPJPY": ("GBP", "JPY"),
-    "AUDJPY": ("AUD", "JPY"), "NZDJPY": ("NZD", "JPY"), "CADJPY": ("CAD", "JPY"),
+    "EURUSD": ("EUR", "USD"), "GBPUSD": ("GBP", "USD"),
+    "USDJPY": ("USD", "JPY"), "AUDUSD": ("AUD", "USD"),
+    "USDCAD": ("USD", "CAD"),
 }
 CURRENCY_TERMS = {
     "USD": ("united states", "u.s.", "us ", "american", "federal reserve", "fed ", "fomc", "treasury", "dollar"),
-    "EUR": ("eurozone", "euro area", "european central bank", "ecb", "euro "),
+    "EUR": ("eurozone", "euro area", "european central bank", "ecb", "euro ", "germany", "german"),
     "GBP": ("united kingdom", "britain", "british", "bank of england", "boe", "sterling", "pound"),
     "JPY": ("japan", "bank of japan", "boj", "yen"),
     "AUD": ("australia", "reserve bank of australia", "rba", "australian dollar"),
-    "NZD": ("new zealand", "reserve bank of new zealand", "rbnz", "kiwi"),
     "CAD": ("canada", "bank of canada", "boc", "canadian dollar"),
-    "CHF": ("switzerland", "swiss national bank", "snb", "franc"),
 }
+
 def _symbol_impacts(text, labels, hawkish, dovish, above, below, risk_off, risk_easing, supply_shock, company):
-    """Map a news event to instruments through explicit macro/risk/commodity channels."""
+    """Classify the 16 instruments in Gold Prices Bot using news transmission channels."""
     currency_bias = {}
-    # US macro releases and Fed policy are USD drivers even when the publisher omits
-    # the word 'United States'. Other currencies require a country/central-bank cue.
     mentioned = {ccy for ccy, terms in CURRENCY_TERMS.items() if any(term in text for term in terms)}
-    if any(x in labels for x in ("سیاست پولی و نرخ بهره", "تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی")) and not mentioned:
+    macro_labels = {"سیاست پولی و نرخ بهره", "تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی"}
+    if labels and set(labels) & macro_labels and not mentioned:
         mentioned.add("USD")
-    positive_surprise = (above and (("تورم و شاخص قیمت" in labels) or ("اشتغال و دستمزد" in labels) or ("رشد اقتصادی" in labels)))
-    negative_surprise = (below and (("تورم و شاخص قیمت" in labels) or ("اشتغال و دستمزد" in labels) or ("رشد اقتصادی" in labels)))
+    positive_surprise = above and bool(set(labels) & {"تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی"})
+    negative_surprise = below and bool(set(labels) & {"تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی"})
     if hawkish or positive_surprise:
         bias = 1
     elif dovish or negative_surprise:
@@ -133,30 +134,30 @@ def _symbol_impacts(text, labels, hawkish, dovish, above, below, risk_off, risk_
     for ccy in mentioned:
         currency_bias[ccy] = bias
     if risk_off and not risk_easing:
-        for ccy, value in (("USD", 1), ("JPY", 1), ("CHF", 1), ("AUD", -1), ("NZD", -1)):
+        for ccy, value in (("USD", 1), ("JPY", 1), ("AUD", -1)):
             currency_bias[ccy] = currency_bias.get(ccy, 0) + value
     if risk_easing:
-        for ccy, value in (("USD", -1), ("JPY", -1), ("CHF", -1), ("AUD", 1), ("NZD", 1)):
+        for ccy, value in (("USD", -1), ("JPY", -1), ("AUD", 1)):
             currency_bias[ccy] = currency_bias.get(ccy, 0) + value
 
     impacts = []
     def add(symbol, score, reason):
         if score > 0:
-            impacts.append({"symbol": symbol, "impact": "صعودی بالقوه", "reason": reason})
+            label = "صعودی بالقوه"
         elif score < 0:
-            impacts.append({"symbol": symbol, "impact": "نزولی بالقوه", "reason": reason})
-        elif score == 0:
-            impacts.append({"symbol": symbol, "impact": "خنثی/نامشخص", "reason": reason})
+            label = "نزولی بالقوه"
+        else:
+            label = "خنثی/نامشخص"
+        impacts.append({"symbol": symbol, "impact": label, "reason": reason})
 
     for symbol, (base, quote) in FX_PAIRS.items():
         if base in currency_bias or quote in currency_bias:
             score = currency_bias.get(base, 0) - currency_bias.get(quote, 0)
-            if score:
-                add(symbol, score, f"اثر نسبی خبر بر {base} در برابر {quote}")
-    if "USD" in currency_bias:
-        add("DXY", currency_bias["USD"], "تغییر احتمالی قدرت دلار در برابر سبد ارزها")
+            add(symbol, score, f"اثر نسبی خبر بر {base} در برابر {quote}")
 
-    macro_gold = bool(set(labels) & {"سیاست پولی و نرخ بهره", "تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی", "تعرفه و تجارت", "ژئوپلیتیک و امنیت", "بانک‌ها و بازار مالی", "طلا و فلزات گران‌بها"})
+    macro_gold = bool(set(labels) & (macro_labels | {
+        "تعرفه و تجارت", "ژئوپلیتیک و امنیت", "بانک‌ها و بازار مالی", "طلا و فلزات گران‌بها"
+    }))
     if macro_gold and not company:
         gold_score = 0
         if risk_off and not risk_easing: gold_score += 1
@@ -165,23 +166,34 @@ def _symbol_impacts(text, labels, hawkish, dovish, above, below, risk_off, risk_
         if hawkish and not dovish: gold_score -= 1
         if positive_surprise and not dovish: gold_score -= 1
         if negative_surprise and not hawkish: gold_score += 1
-        add("XAUUSD", gold_score, "کانال نرخ بهره/دلار و تقاضای پناهگاه امن؛ اثر نهایی به واکنش بازار وابسته است")
-        if "طلا و فلزات گران‌بها" in labels or "نفت و انرژی" in labels or "رشد اقتصادی" in labels:
-            add("XAGUSD", gold_score + (1 if "رشد اقتصادی" in labels and positive_surprise else 0), "کانال فلزات گران‌بها و تقاضای صنعتی")
+        add("XAUUSD", gold_score, "کانال دلار، نرخ بهره و تقاضای پناهگاه امن")
+        silver_score = gold_score + (1 if "رشد اقتصادی" in labels and positive_surprise else 0)
+        add("XAGUSD", silver_score, "کانال فلزات گران‌بها و تقاضای صنعتی")
+        add("XPTUSD", gold_score + (1 if "رشد اقتصادی" in labels and positive_surprise else 0),
+            "تقاضای صنعتی و شرایط عمومی فلزات گران‌بها")
+        add("XPDUSD", gold_score + (1 if "رشد اقتصادی" in labels and positive_surprise else 0),
+            "تقاضای صنعتی و شرایط عرضه فلزات گران‌بها")
+
+    energy_terms = ("oil", "crude", "opec", "natural gas", "lng", "gas pipeline", "energy supply",
+                    "strait of hormuz", "pipeline", "tanker", "shipping disruption")
     if "نفت و انرژی" in labels or supply_shock:
-        oil_score = 1 if supply_shock or (risk_off and not risk_easing) else -1 if risk_easing else 0
-        add("USOIL", oil_score, "ریسک عرضه، مسیر حمل‌ونقل و انتظارات تقاضای انرژی")
-        add("UKOIL", oil_score, "ریسک عرضه جهانی نفت و مسیر حمل‌ونقل")
-    if "ژئوپلیتیک و امنیت" in labels or "بانک‌ها و بازار مالی" in labels or "رشد اقتصادی" in labels or "سیاست پولی و نرخ بهره" in labels:
+        energy_score = 1 if supply_shock or (risk_off and not risk_easing) else -1 if risk_easing else 0
+        add("USOIL", energy_score, "ریسک عرضه و تقاضای نفت خام WTI")
+        add("UKOIL", energy_score, "ریسک عرضه و تقاضای نفت خام برنت")
+        gas_score = energy_score if any(term in text for term in ("natural gas", "lng", "gas pipeline", "gas supply")) else 0
+        add("XNGUSD", gas_score, "خبر عرضه/تقاضای گاز طبیعی؛ اثر مستقیم فقط در صورت ارتباط با گاز")
+
+    index_relevant = bool(set(labels) & (macro_labels | {"ژئوپلیتیک و امنیت", "بانک‌ها و بازار مالی", "نفت و انرژی", "تعرفه و تجارت"}))
+    if index_relevant:
         index_score = -1 if risk_off and not risk_easing else 1 if risk_easing else -1 if hawkish and not dovish else 1 if dovish and not hawkish else 0
-        reason = "اثر احتمالی ریسک‌پذیری، رشد و انتظارات نرخ بهره بر سهام"
-        for symbol in ("DJIUSD", "NAS100", "SPX500"):
+        reason = "اثر احتمالی ریسک‌پذیری، رشد و انتظارات نرخ بهره بر شاخص سهام"
+        for symbol in ("US30", "USTEC", "US500"):
             add(symbol, index_score, reason)
-    if "ژئوپلیتیک و امنیت" in labels or "بانک‌ها و بازار مالی" in labels:
-        crypto_score = -1 if risk_off and not risk_easing else 1 if risk_easing else 0
-        add("BTCUSD", crypto_score, "حساسیت دارایی‌های پرریسک به ریسک‌پذیری بازار")
-        add("ETHUSD", crypto_score, "حساسیت دارایی‌های پرریسک به ریسک‌پذیری بازار")
-    return impacts
+        if "EUR" in currency_bias or "ژئوپلیتیک و امنیت" in labels or "نفت و انرژی" in labels:
+            add("DE30", index_score, "اثر احتمالی خبر بر ریسک‌پذیری و سهام آلمان")
+
+    # Return only instruments from the active Gold Prices Bot catalogue.
+    return [row for row in impacts if row["symbol"] in SYMBOL_UNIVERSE]
 
 def analyse(item, article_text="", market_snapshot=None):
     title = str(item.get("title", ""))
