@@ -1,6 +1,7 @@
 """Best-effort, explicitly timestamped public market context for news analysis."""
 from __future__ import annotations
 from datetime import datetime, timezone
+import os
 import requests
 
 YAHOO = {
@@ -40,7 +41,7 @@ def _fetch_yahoo(symbol, session, timeout):
         "unit": "USD/oz" if symbol == "XAUUSD=X" else "index" if symbol == "DX-Y.NYB" else "yield_percent" if symbol == "^TNX" else "USD/barrel",
     }
 
-def fetch_market_snapshot(session=None, timeout=12):
+def fetch_market_snapshot(session=None, timeout=12, fred_api_key=None):
     session = session or requests.Session()
     snapshot = {}
     # Reuse the free spot provider already integrated in Gold Market.
@@ -75,4 +76,32 @@ def fetch_market_snapshot(session=None, timeout=12):
             snapshot[key] = _fetch_yahoo(symbol, session, timeout)
         except (requests.RequestException, ValueError, KeyError, TypeError, IndexError) as exc:
             snapshot[key] = {"status": "UNAVAILABLE", "source": f"Yahoo Finance ({symbol})", "error": str(exc)[:180]}
+    # FRED DFII10 is a daily 10-year TIPS real-yield series. It is optional.
+    key = (fred_api_key or os.getenv("FRED_API_KEY", "")).strip()
+    if key:
+        try:
+            response = session.get(
+                "https://api.stlouisfed.org/fred/series/observations",
+                params={"series_id": "DFII10", "api_key": key, "file_type": "json", "sort_order": "desc", "limit": 2},
+                timeout=timeout,
+            )
+            response.raise_for_status()
+            rows = [row for row in response.json().get("observations", []) if row.get("value") not in (None, "", ".")]
+            if not rows:
+                raise ValueError("FRED returned no real-yield observations")
+            value = float(rows[0]["value"])
+            prior = float(rows[1]["value"]) if len(rows) > 1 else None
+            change = ((value / prior) - 1) * 100 if prior else None
+            observed = datetime.strptime(rows[0]["date"], "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            age = max(0, int((datetime.now(timezone.utc) - observed).total_seconds() / 60))
+            snapshot["US10Y_REAL"] = {
+                "value": round(value, 4), "change_pct": round(change, 4) if change is not None else None,
+                "age_minutes": age, "observed_utc": observed.isoformat(),
+                "status": "DAILY" if age <= 5 * 24 * 60 else "STALE",
+                "source": "FRED:DFII10", "unit": "real_yield_percent",
+            }
+        except (requests.RequestException, ValueError, KeyError, TypeError, IndexError) as exc:
+            snapshot["US10Y_REAL"] = {"status": "UNAVAILABLE", "source": "FRED:DFII10", "error": str(exc)[:180]}
+    else:
+        snapshot["US10Y_REAL"] = {"status": "UNAVAILABLE", "source": "FRED:DFII10", "error": "FRED_API_KEY not configured"}
     return snapshot
