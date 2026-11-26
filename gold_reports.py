@@ -123,7 +123,7 @@ def monitor_session_boundaries(state, now, holiday_data):
         for kind, boundary, verb in (("open", opening, "باز شد"), ("close", closing, "بسته شد")):
             delta = (utc_now - boundary.astimezone(ZoneInfo("UTC"))).total_seconds()
             key = f"{session['country']}:{local_date.isoformat()}:{kind}"
-            if 0 <= delta <= 12 * 60 and not sent.get(key):
+            if 0 <= delta <= 20 * 60 and not sent.get(key):
                 message = (f"🔔 <b>اعلان سشن معاملاتی</b>\n"
                            f"🕒 ساعت کابل: <code>{boundary:%H:%M}</code>\n"
                            f"سشن <b>{session['name']}</b> {verb}.\n\n"
