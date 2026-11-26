@@ -8,7 +8,12 @@ class GoldMarketSignatureTests(unittest.TestCase):
         self.assertEqual(
             _telegram_lines("Gold market report"),
             [
+                "<b>Gold Channel | XAU</b>",
+                "",
+                "<b>عنوان:</b>",
                 "Gold market report",
+                "",
+                "<b>متن:</b>",
                 "",
                 "<b>Gold Admin</b>",
                 "<b>Market Admin</b>",
