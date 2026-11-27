@@ -11,11 +11,11 @@ on:
         options:
           - analyze
           - discard_pending
+  # Run only after Gold Reports Bot publishes its scheduled/event report.
+  # The analyst reads channel_post updates and replies to matching report posts.
   workflow_run:
     workflows: ["Gold Reports Bot"]
     types: [completed]
-  schedule:
-    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
 
 permissions:
   contents: write
