@@ -77,9 +77,29 @@ def extract_fields(text):
     return fields
 
 
+def is_target_chat(chat):
+    configured = CHAT_ID.strip()
+    if str(chat.get("id", "")) == configured:
+        return True
+    username = (chat.get("username") or "").lstrip("@").lower()
+    return bool(configured.startswith("@") and username == configured[1:].lower())
+
+
+def verify_channel_admin():
+    me = telegram("getMe", {})
+    member = telegram("getChatMember", {"chat_id": CHAT_ID, "user_id": me["id"]})
+    status = member.get("status")
+    print(f"Priced-In bot identity verified; target channel admin status: {status}.")
+    if status not in ("administrator", "creator"):
+        raise RuntimeError(
+            "Priced-In Analyst bot is not an administrator in the target channel. "
+            "Promote this bot to channel admin, then retry."
+        )
+
+
 def process_update(update):
     message = update.get("channel_post") or update.get("edited_channel_post")
-    if not message or str(message.get("chat", {}).get("id")) != CHAT_ID:
+    if not message or not is_target_chat(message.get("chat", {})):
         return False
     kind = is_target_post(message)
     if not kind:
@@ -117,6 +137,7 @@ def process_update(update):
 def main():
     if not TOKEN or not CHAT_ID:
         raise RuntimeError("Set GOLD_PRICED_IN_ANALYST_BOT_TOKEN and CHANNEL_ID.")
+    verify_channel_admin()
     state = load_state()
     offset = int(state.get("offset", 0))
     result = telegram("getUpdates", {
@@ -125,12 +146,15 @@ def main():
         "allowed_updates": ["channel_post", "edited_channel_post"],
     }, timeout=25)
     updates = sorted(result, key=lambda item: item["update_id"])
+    print(f"Telegram polling completed: {len(updates)} pending updates; saved offset={offset}.")
     processed = set(state.get("processed", []))
     for update in updates:
         update_id = int(update["update_id"])
         try:
             message = update.get("channel_post") or update.get("edited_channel_post") or {}
             msg_id = message.get("message_id")
+            if message and is_target_chat(message.get("chat", {})):
+                print(f"Received target-channel post {msg_id}; recognized event heading: {bool(is_target_post(message))}.")
             unique = f'{message.get("chat", {}).get("id")}:{msg_id}'
             if unique and unique not in processed:
                 if process_update(update):

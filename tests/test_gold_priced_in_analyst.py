@@ -1,5 +1,5 @@
 import unittest
-from apps.gold_priced_in_analyst.__main__ import is_target_post, extract_fields
+from apps.gold_priced_in_analyst.__main__ import is_target_post, extract_fields, is_target_chat
 from apps.gold_priced_in_analyst.analysis import numeric, parse_event_time, classify_pre, classify_post
 from datetime import datetime, timezone, timedelta
 
@@ -11,6 +11,25 @@ class TargetFilterTests(unittest.TestCase):
         self.assertIsNone(is_target_post({"text": "📚 تقویم و گزارش ماه جاری"}))
         self.assertIsNone(is_target_post({"text": "🔔 اعلان سشن معاملاتی"}))
         self.assertIsNone(is_target_post({"text": "📰 خبر جدید"}))
+
+    def test_target_chat_accepts_numeric_id(self):
+        import apps.gold_priced_in_analyst.__main__ as module
+        old = module.CHAT_ID
+        try:
+            module.CHAT_ID = "-100123"
+            self.assertTrue(is_target_chat({"id": -100123}))
+            self.assertFalse(is_target_chat({"id": -100456}))
+        finally:
+            module.CHAT_ID = old
+
+    def test_target_chat_accepts_username(self):
+        import apps.gold_priced_in_analyst.__main__ as module
+        old = module.CHAT_ID
+        try:
+            module.CHAT_ID = "@gold_channel"
+            self.assertTrue(is_target_chat({"id": -100123, "username": "gold_channel"}))
+        finally:
+            module.CHAT_ID = old
 
     def test_extract_fields(self):
         fields = extract_fields("🌍 USD | US CPI\n🕘 زمان کابل: 2026-11-26 20:00\nپیش‌بینی عددی Forex Factory: 3.1%\nعدد واقعی: 3.2%")

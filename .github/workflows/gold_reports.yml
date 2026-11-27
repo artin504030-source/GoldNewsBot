@@ -13,6 +13,7 @@ on:
           - monitor
           - test_news
           - test_pre_news
+          - sessions
   schedule:
     # 09:00 Asia/Kabul (UTC+4:30), every day; Python chooses monthly/weekly/daily report by weekday.
     - cron: "30 4 * * 0-6"
