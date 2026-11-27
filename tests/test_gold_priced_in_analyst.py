@@ -126,7 +126,7 @@ class TargetFilterTests(unittest.TestCase):
         prior = [(now - timedelta(hours=12) + timedelta(minutes=60*i), 2000.0) for i in range(13)]
         future = [(event_dt + timedelta(minutes=5*i), 2200.0) for i in range(1, 5)]
         status, evidence = classify_pre(prior + future, event_dt, "3.2%", "3.0%", "US CPI")
-        self.assertEqual(status, "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود")
+        self.assertEqual(status, "حرکت قابل‌توجهی پیش از انتشار ثبت نشد؛ پیش‌خورشدن نامشخص")
         self.assertIn("+0.00%", evidence)
 
     def test_pre_analysis_requires_event_timestamp(self):
@@ -147,7 +147,8 @@ class TargetFilterTests(unittest.TestCase):
         now = datetime.now(timezone.utc)
         gold = [(now - timedelta(hours=13-i), 2000 - i * 3) for i in range(13)]
         status, evidence = classify_pre(gold, now + timedelta(hours=1), "3.2%", "3.0%", "US CPI", {})
-        self.assertIn("تا حدی پیش‌خور", status)
+        self.assertIn("حرکت پیش از انتشار مشاهده شد", status)
+        self.assertIn("انتساب به رویداد اثبات نشده", evidence)
         self.assertIn("داده کافی نیست", evidence)
 
     def test_post_requires_event_time_and_bars(self):
