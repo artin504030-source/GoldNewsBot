@@ -6,6 +6,7 @@ from unittest.mock import patch
 from apps.gold_news_analyst.engine import analyse, eligible, fingerprint, SYMBOL_UNIVERSE
 from apps.gold_news_analyst.report import render
 from apps.gold_news_analyst import __main__ as analyst_main
+from apps.gold_news_analyst.us_macro import analyze_us_macro
 
 class AnalystTests(unittest.TestCase):
     def item(self, title, **extra):
@@ -127,6 +128,43 @@ class AnalystTests(unittest.TestCase):
         output = render(self.item("Core PCE inflation"), {"body": "", "error": "publisher blocked"})
         self.assertIn("متن کامل دریافت نشد", output)
         self.assertIn("publisher blocked", output)
+
+    def test_us_cpi_actual_forecast_previous_and_gold_transmission_are_reported(self):
+        item = self.item("US Core CPI Actual: 3.1% Forecast: 3.0% Previous: 3.2%")
+        result = analyze_us_macro(item, "The latest CPI report showed the figures.")
+        self.assertEqual(result["indicator"], "CPI / Core CPI")
+        self.assertEqual(result["surprise"], "قوی‌تر/بالاتر از انتظار")
+        self.assertEqual(result["actual"], "3.1%")
+        self.assertIn("بازده واقعی", result["mechanism"])
+        self.assertIn("فشار نزولی بالقوه", result["gold"])
+
+    def test_jobless_claims_higher_actual_is_classified_as_weaker_labor(self):
+        item = self.item("Initial Jobless Claims Actual: 230K Forecast: 220K Previous: 215K")
+        result = analyze_us_macro(item)
+        self.assertEqual(result["indicator"], "Initial / Continuing Jobless Claims")
+        self.assertEqual(result["surprise"], "ضعیف‌تر/پایین‌تر از انتظار")
+
+    def test_preview_does_not_invent_actual_value_or_surprise(self):
+        item = self.item("Preview: economists expect US CPI to ease; consensus forecast 2.8%")
+        result = analyze_us_macro(item)
+        self.assertIsNone(result["actual"])
+        self.assertIsNone(result["surprise"])
+        self.assertIn("پیش‌نمایش", result["stage"])
+        self.assertIn("جهت قطعی", result["gold"])
+
+    def test_nfp_specialist_notes_include_revisions_and_wages(self):
+        item = self.item("US Nonfarm Payrolls report released")
+        result = analyze_us_macro(item, "Employment report details were published.")
+        self.assertIn("بازنگری دو ماه قبل", result["caveat"])
+        self.assertTrue(any("DXY" in line for line in result["checks"]))
+
+    def test_us_macro_section_is_included_in_rendered_report(self):
+        item = self.item("US Core PCE inflation Actual: 2.9% Forecast: 2.8% Previous: 2.8%")
+        with patch("apps.gold_news_analyst.report.translate_title_to_persian", return_value="گزارش تورم"):
+            output = render(item)
+        self.assertIn("تحلیل تخصصی گزارش اقتصادی آمریکا", output)
+        self.assertIn("Actual:", output)
+        self.assertIn("مسیر انتقال اثر به بازار", output)
 
     def test_fingerprint_stable(self):
         item = self.item("Headline"); self.assertEqual(fingerprint(item), fingerprint(item.copy()))
