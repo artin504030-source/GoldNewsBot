@@ -1,28 +1,3 @@
 {
-  "active_alerts": {
-    "source:Economic Reports": {
-      "fingerprint": "2026-11-27T06:50:48.499701+00:00",
-      "sent_at_utc": "2026-11-27T06:53:39.591448+00:00"
-    },
-    "source:Geopolitical News": {
-      "fingerprint": "2026-11-27T06:51:15.619511+00:00",
-      "sent_at_utc": "2026-11-27T06:53:40.119469+00:00"
-    },
-    "source:Oil Trade and Supply": {
-      "fingerprint": "2026-11-27T06:51:37.461705+00:00",
-      "sent_at_utc": "2026-11-27T06:53:40.596116+00:00"
-    },
-    "source:Energy Shipping Routes": {
-      "fingerprint": "2026-11-27T06:52:06.431656+00:00",
-      "sent_at_utc": "2026-11-27T06:53:41.098648+00:00"
-    },
-    "source:Conflict and Security": {
-      "fingerprint": "2026-11-27T06:52:35.858500+00:00",
-      "sent_at_utc": "2026-11-27T06:53:41.568884+00:00"
-    },
-    "source:Trade and Sanctions": {
-      "fingerprint": "2026-11-27T06:52:57.358948+00:00",
-      "sent_at_utc": "2026-11-27T06:53:45.206655+00:00"
-    }
-  }
+  "active_alerts": {}
 }
