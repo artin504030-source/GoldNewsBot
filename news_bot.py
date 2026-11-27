@@ -498,8 +498,10 @@ def main():
                     print("Filtered irrelevant news:", title); continue
                 assessment = score_breaking_news(title, summary, source=source)
                 if BREAKING_ONLY and assessment["score"] < assessment["threshold"]: continue
-                if is_duplicate(title, entry.get("link", ""), archive):
-                    confirmations = record_source_confirmation(source, title, entry.get("link", ""))
+                published_dt = entry_datetime(entry)
+                published_iso = published_dt.isoformat() if published_dt else None
+                if is_duplicate(title, entry.get("link", ""), archive, published_iso):
+                    confirmations = record_source_confirmation(source, title, entry.get("link", ""), published_iso)
                     print(f"Duplicate confirmed by another source; total sources={confirmations}:", title)
                     archive = load_archive(); seen.add(uid); save_seen(seen)
                     print("Skipped cross-feed duplicate:", title); continue
