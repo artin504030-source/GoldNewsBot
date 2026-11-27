@@ -28,7 +28,7 @@ def split_message(message, limit=3800):
                 current = ""
             chunks.append(line[:limit])
             line = line[limit:]
-        candidate = line if not current else current + "\\n" + line
+        candidate = line if not current else current + "\n" + line
         if len(candidate) > limit:
             if current:
                 chunks.append(current)
@@ -42,7 +42,7 @@ def split_message(message, limit=3800):
 
 def send(message):
     if os.getenv("DRY_RUN", "false").lower() == "true":
-        print("[DRY RUN] Daily digest preview (not sent):\\n" + message)
+        print("[DRY RUN] Daily digest preview (not sent):\n" + message)
         return
     if not TOKEN or not CHANNEL_ID:
         raise SystemExit("Telegram settings missing")
