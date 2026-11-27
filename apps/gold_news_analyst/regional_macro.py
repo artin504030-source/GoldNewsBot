@@ -93,7 +93,7 @@ INDICATORS = [
     ("SNB Rate / Policy", ("snb rate", "swiss national bank rate", "snb policy"), "policy", False, "سیاست پولی بانک ملی سوئیس"),
     ("Swiss GDP", ("swiss gdp", "switzerland gdp"), "growth", False, "تولید ناخالص داخلی سوئیس"),
     ("India CPI", ("india cpi", "indian cpi", "india inflation"), "inflation", False, "تورم مصرف‌کننده هند"),
-    ("RBI Rate / Policy", ("rbi rate", "reserve bank of india rate", "repo rate india"), "policy", False, "سیاست پولی بانک مرکزی هند"),
+    ("RBI Rate / Policy", ("rbi rate", "reserve bank of india rate", "reserve bank of india", "repo rate india", "india repo rate"), "policy", False, "سیاست پولی بانک مرکزی هند"),
     ("India GDP", ("india gdp", "indian gdp"), "growth", False, "تولید ناخالص داخلی هند"),
     ("India PMI", ("india pmi", "indian pmi"), "growth", False, "شاخص مدیران خرید هند"),
     ("South Korea CPI", ("south korea cpi", "korea cpi", "korean inflation"), "inflation", False, "تورم مصرف‌کننده کوریای جنوبی"),
