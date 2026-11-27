@@ -16,6 +16,16 @@ REGIONS = {
         ],
         "currency": "EUR",
     },
+    "🇨🇭 سوئیس": {
+        "terms": ("switzerland", "swiss", "swiss national bank", "snb"),
+        "checks": [
+            "USDCHF و EURCHF: واکنش فرانک را بررسی کنید.",
+            "بازده اوراق سوئیس و اختلاف بازده با آمریکا را کنترل کنید.",
+            "DXY و XAUUSD: اثر غیرمستقیم تقویت فرانک و تقاضای دارایی امن را بسنجید.",
+            "تورم داخلی و موضع SNB را در کنار ریسک‌گریزی جهانی بررسی کنید.",
+        ],
+        "currency": "CHF",
+    },
     "🇬🇧 بریتانیا": {
         "terms": ("united kingdom", " u.k.", "uk economy", "britain", "british", "bank of england", "boe", "ons uk"),
         "checks": [
@@ -36,6 +46,36 @@ REGIONS = {
         ],
         "currency": "JPY",
     },
+    "🇮🇳 هند": {
+        "terms": ("india", "indian", "reserve bank of india", "rbi", "mospi"),
+        "checks": [
+            "USDINR و INR: واکنش روپیه و سیاست ارزی بانک مرکزی هند را بررسی کنید.",
+            "بازده اوراق هند و انتظارات نرخ RBI را کنترل کنید.",
+            "نفت خام: هند واردکننده بزرگ انرژی است و قیمت نفت بر تورم و روپیه اثر دارد.",
+            "DXY و XAUUSD: اثر غیرمستقیم دلار، نفت و تقاضای طلا را تفکیک کنید.",
+        ],
+        "currency": "INR",
+    },
+    "🇰🇷 کوریای جنوبی": {
+        "terms": ("south korea", "south korean", "korea", "korean", "bank of korea", "bok", "kostat"),
+        "checks": [
+            "USD/KRW و KRW: واکنش وون و جریان سرمایه را بررسی کنید.",
+            "صادرات نیمه‌رساناها و تجارت خارجی را کنار رشد داخلی بسنجید.",
+            "بازده اوراق و انتظارات نرخ بانک مرکزی کوریای جنوبی را کنترل کنید.",
+            "DXY و XAUUSD: اثر دلار و ریسک‌پذیری جهانی را جداگانه تأیید کنید.",
+        ],
+        "currency": "KRW",
+    },
+    "🇦🇺 استرالیا": {
+        "terms": ("australia", "australian", "reserve bank of australia", "rba", "abs australia"),
+        "checks": [
+            "AUDUSD و AUD crosses: واکنش دلار استرالیا را بررسی کنید.",
+            "بازده اوراق استرالیا و انتظارات نرخ RBA را کنترل کنید.",
+            "داده‌های چین و قیمت سنگ‌آهن/کالاها را به‌عنوان محرک بیرونی AUD بررسی کنید.",
+            "DXY و XAUUSD: اثر حرکت دلار و تقاضای کالاها را تفکیک کنید.",
+        ],
+        "currency": "AUD",
+    },
     "🇨🇳 چین": {
         "terms": ("china", "chinese", "people's bank of china", "pboc", "national bureau of statistics of china", "nbs china", "yuan", "renminbi"),
         "checks": [
@@ -49,6 +89,21 @@ REGIONS = {
 }
 
 INDICATORS = [
+    ("Swiss CPI", ("swiss cpi", "switzerland cpi", "swiss inflation"), "inflation", False, "تورم مصرف‌کننده سوئیس"),
+    ("SNB Rate / Policy", ("snb rate", "swiss national bank rate", "snb policy"), "policy", False, "سیاست پولی بانک ملی سوئیس"),
+    ("Swiss GDP", ("swiss gdp", "switzerland gdp"), "growth", False, "تولید ناخالص داخلی سوئیس"),
+    ("India CPI", ("india cpi", "indian cpi", "india inflation"), "inflation", False, "تورم مصرف‌کننده هند"),
+    ("RBI Rate / Policy", ("rbi rate", "reserve bank of india rate", "repo rate india"), "policy", False, "سیاست پولی بانک مرکزی هند"),
+    ("India GDP", ("india gdp", "indian gdp"), "growth", False, "تولید ناخالص داخلی هند"),
+    ("India PMI", ("india pmi", "indian pmi"), "growth", False, "شاخص مدیران خرید هند"),
+    ("South Korea CPI", ("south korea cpi", "korea cpi", "korean inflation"), "inflation", False, "تورم مصرف‌کننده کوریای جنوبی"),
+    ("BOK Rate / Policy", ("bok rate", "bank of korea rate", "bank of korea policy"), "policy", False, "سیاست پولی بانک مرکزی کوریای جنوبی"),
+    ("South Korea GDP", ("south korea gdp", "korea gdp", "korean gdp"), "growth", False, "تولید ناخالص داخلی کوریای جنوبی"),
+    ("South Korea Exports", ("south korea exports", "korea exports", "korean exports"), "growth", False, "صادرات کوریای جنوبی"),
+    ("Australia CPI", ("australia cpi", "australian cpi", "australia inflation"), "inflation", False, "تورم مصرف‌کننده استرالیا"),
+    ("RBA Rate / Policy", ("rba rate", "reserve bank of australia rate", "rba policy"), "policy", False, "سیاست پولی بانک مرکزی استرالیا"),
+    ("Australia Employment", ("australia employment", "australia unemployment", "australian jobs"), "employment", False, "بازار کار استرالیا"),
+    ("Australia GDP", ("australia gdp", "australian gdp"), "growth", False, "تولید ناخالص داخلی استرالیا"),
     ("HICP / Core HICP", ("hicp", "harmonised index of consumer prices", "euro area inflation", "eurozone inflation"), "inflation", False, "تورم مصرف‌کننده منطقه یورو"),
     ("ECB Rate / Policy", ("ecb rate", "ecb interest rate", "ecb deposit rate", "ecb rate decision", "ecb monetary policy"), "policy", False, "نرخ و سیاست پولی بانک مرکزی اروپا"),
     ("Eurozone GDP", ("euro area gdp", "eurozone gdp", "euro area gross domestic product"), "growth", False, "تولید ناخالص داخلی منطقه یورو"),
