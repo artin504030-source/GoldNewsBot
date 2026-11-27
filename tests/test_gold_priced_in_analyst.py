@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 from apps.gold_priced_in_analyst.__main__ import is_target_post, extract_fields, is_target_chat, discard_pending_updates, process_update, verify_channel_admin
-from apps.gold_priced_in_analyst.analysis import numeric, parse_event_time, classify_pre, classify_post
+from apps.gold_priced_in_analyst.analysis import numeric, parse_event_time, classify_pre, classify_post, _change, _cross_market_lines
 from datetime import datetime, timezone, timedelta
 
 
@@ -119,6 +119,22 @@ class TargetFilterTests(unittest.TestCase):
     def test_pre_requires_market_evidence(self):
         status, _ = classify_pre([], None, "3.1%", "3.0%", "CPI")
         self.assertEqual(status, "اطلاعات کافی برای تشخیص وجود ندارد")
+
+
+    def test_cross_market_change_uses_common_time_window(self):
+        from datetime import datetime, timezone, timedelta
+        end = datetime.now(timezone.utc)
+        rows = [(end - timedelta(hours=12), 100.0), (end, 101.0)]
+        self.assertAlmostEqual(_change(rows, end - timedelta(hours=12), end), 1.0)
+        self.assertIn("شاخص دلار", _cross_market_lines({"DXY": rows}, end - timedelta(hours=12), end)[0])
+
+    def test_pre_analysis_does_not_claim_cross_market_confirmation_when_missing(self):
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        gold = [(now - timedelta(hours=13-i), 2000 - i * 3) for i in range(13)]
+        status, evidence = classify_pre(gold, None, "3.2%", "3.0%", "US CPI", {})
+        self.assertIn("تا حدی پیش‌خور", status)
+        self.assertIn("داده کافی نیست", evidence)
 
     def test_post_requires_event_time_and_bars(self):
         message = classify_post([], None, "3.2%", "3.1%")
