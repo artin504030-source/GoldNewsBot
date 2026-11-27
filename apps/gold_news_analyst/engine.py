@@ -39,7 +39,15 @@ def fingerprint(item):
     return sha256(raw.encode("utf-8")).hexdigest()
 
 def _contains(text, terms):
-    return [term for term in terms if term in text]
+    """Match complete English words/phrases rather than incidental substrings."""
+    import re
+    haystack = str(text or "").lower()
+    matches = []
+    for term in terms:
+        needle = str(term).lower().strip()
+        if needle and re.search(r"(?<![a-z0-9])" + re.escape(needle) + r"(?![a-z0-9])", haystack):
+            matches.append(term)
+    return matches
 
 def _signal(headline, lead, terms):
     return bool(_contains(headline, terms)) or len(_contains(lead, terms)) >= 2
