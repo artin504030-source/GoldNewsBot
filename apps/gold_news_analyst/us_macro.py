@@ -58,14 +58,14 @@ INDICATORS = {
 # Parse only explicitly labelled Actual/Forecast/Previous fields. Never infer
 # a value from an arbitrary number in an article paragraph.
 FIELD_PATTERNS = {
-    "actual": r"(?:actual|reported|released|current)\\s*[:：]?\\s*([-+]?\\d[\\d,]*(?:\\.\\d+)?\\s*%?)",
-    "forecast": r"(?:forecast|consensus|expected|median estimate)\\s*[:：]?\\s*([-+]?\\d[\\d,]*(?:\\.\\d+)?\\s*%?)",
-    "previous": r"(?:previous|prior|previously)\\s*[:：]?\\s*([-+]?\\d[\\d,]*(?:\\.\\d+)?\\s*%?)",
+    "actual": r"(?:actual|reported|released|current)\s*[:：]?\s*([-+]?\d[\d,]*(?:\.\d+)?\s*%?)",
+    "forecast": r"(?:forecast|consensus|expected|median estimate)\s*[:：]?\s*([-+]?\d[\d,]*(?:\.\d+)?\s*%?)",
+    "previous": r"(?:previous|prior|previously)\s*[:：]?\s*([-+]?\d[\d,]*(?:\.\d+)?\s*%?)",
 }
 
 
 def _normal(value: str) -> str:
-    return re.sub(r"\\s+", " ", str(value or "").lower()).strip()
+    return re.sub(r"\s+", " ", str(value or "").lower()).strip()
 
 
 def _first_indicator(text: str):
