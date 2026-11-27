@@ -50,9 +50,14 @@ def render(item, article=None, market_snapshot=None):
     safe_link = escape(original_url, quote=True) if isinstance(original_url, str) and original_url.startswith(("https://", "http://")) else ""
     article_ok = bool(article.get("body") and len(article.get("body", "").strip()) >= 300)
     lines = [
+        "<b>Gold Channel | XAU</b>",
+        "",
+        "<b>عنوان:</b>",
         "🧠 <b>تحلیلگر اخبار بازار | Gold News Analyst</b>",
         f"📰 <b>عنوان اصلی: {title}</b>",
         f"🇮🇷 <b>عنوان فارسی: {persian_title}</b>",
+        "",
+        "<b>متن:</b>",
         f"منبع ثبت‌شده در آرشیو: {registered_source}",
         f"اعتبار منبع: {escape(str(item.get('source_status', 'وضعیت منبع ثبت نشده'))[:160])}",
         f"وضعیت ادعا: {escape(str(item.get('claim_status', 'تأیید مستقل در آرشیو احراز نشده'))[:180])}",
