@@ -1,5 +1,16 @@
+import sys
+import types
 import unittest
 from datetime import datetime
+
+# The session helpers do not need BeautifulSoup; keep the root test environment
+# lightweight even when the standalone Gold Reports dependency set is not installed.
+try:
+    import bs4  # noqa: F401
+except ImportError:
+    stub = types.ModuleType("bs4")
+    stub.BeautifulSoup = lambda *args, **kwargs: None
+    sys.modules["bs4"] = stub
 
 from gold_reports import KABUL, session_status_text
 
