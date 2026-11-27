@@ -26,6 +26,9 @@ UA = {"User-Agent": "Mozilla/5.0 (compatible; GoldReportsBot/1.0)"}
 FF_URL = "https://www.forexfactory.com/calendar"
 GOOGLE_RSS = "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
 
+# Do not publish stale calendar results when the monitor resumes after an outage.
+POST_EVENT_GRACE = timedelta(hours=2)
+
 
 # Standard local market-session hours. ZoneInfo applies seasonal DST changes automatically.
 SESSIONS = [
@@ -613,7 +616,10 @@ def monitor_events(events, state, now):
         if 0 < delta <= 3600 and not state["pre_sent"].get(key):
             send_telegram(event_message(e, pre=True))
             state["pre_sent"][key] = {"sent": now.isoformat(), "previous": e["previous"]}
-        elif delta <= 0 and e["actual"] and not state["post_sent"].get(key):
+        # A calendar page includes the entire month. Without an age limit, a
+        # delayed/restarted monitor can publish every historical event as if it
+        # had just happened, flooding the channel and triggering Telegram 429s.
+        elif -POST_EVENT_GRACE.total_seconds() <= delta <= 0 and e["actual"] and not state["post_sent"].get(key):
             prior = state["pre_sent"].get(key, {}).get("previous", "")
             msg = event_message(e, pre=False)
             if prior and e["previous"] and prior != e["previous"]:
