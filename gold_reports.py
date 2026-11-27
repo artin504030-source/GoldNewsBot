@@ -92,28 +92,40 @@ def session_status_text(now, holiday_data, ff_events):
 
     for session in SESSIONS:
         zone = ZoneInfo(session["zone"])
-        local_date = now.astimezone(zone).date()
-        open_kabul, close_kabul = get_session_times(session, now, local_date)
+        local_now = now.astimezone(zone)
+        local_date = local_now.date()
+        today_open, today_close = get_session_times(session, now, local_date)
+        opened = today_open <= now < today_close
+
+        # If today's local session has ended, show the next weekday's opening/closing
+        # so the daily Kabul schedule never displays yesterday's already-finished hours.
+        display_date = local_date
+        weekend = local_date.weekday() >= 5
+        if weekend or (not opened and now >= today_close):
+            display_date = local_date + timedelta(days=1)
+            while display_date.weekday() >= 5:
+                display_date += timedelta(days=1)
+        open_kabul, close_kabul = get_session_times(session, now, display_date)
+
         public_holiday = next((h for h in holiday_data.get(session["country"], [])
                                if h.get("date") == local_date.isoformat()), None)
         ff_reason = "; ".join(sorted({
             h["title"] for h in ff_holidays.get(session["country"], [])
             if h["date"] == local_date.isoformat()
         }))
-        opened = open_kabul <= now < close_kabul
 
-        if local_date.weekday() >= 5:
-            status, marker = "تعطیل آخر هفته", "🔴"
+        if weekend:
+            status, marker = "تعطیل آخر هفته؛ زمان بازگشایی بعدی", "🔴"
         elif ff_reason:
             status, marker = f"تعطیل بانکی — {html.escape(ff_reason)}", "🔴"
         elif opened:
             status, marker = "اکنون باز است", "🟢"
-        elif now < open_kabul:
+        elif now < today_open:
             status, marker = "هنوز باز نشده", "🟡"
         else:
-            status, marker = "امروز بسته شده", "⚪"
+            status, marker = "اکنون بسته است؛ زمان بازگشایی بعدی", "⚪"
 
-        if public_holiday and not ff_reason and local_date.weekday() < 5:
+        if public_holiday and not ff_reason and not weekend:
             status += f" | تعطیلی رسمی {COUNTRY_NAMES[session['country']]}: {html.escape(public_holiday.get('name', 'تعطیلی رسمی'))}"
             if not opened:
                 marker = "🟠"
@@ -123,12 +135,13 @@ def session_status_text(now, holiday_data, ff_events):
         state_line = f"{marker} <b>سشن {session['name']}: {status}</b>"
         if opened:
             state_line += f" — تا ساعت <code>{close_label}</code> کابل باز است"
+        else:
+            state_line += f" — نوبت بعدی از <code>{open_label}</code> تا <code>{close_label}</code> کابل"
         lines.append(state_line)
         lines.append(f"بازگشایی: <code>{open_label}</code> کابل | بسته‌شدن: <code>{close_label}</code> کابل")
 
     lines.append("ساعت‌ها به وقت کابل هستند و با تغییر ساعت تابستانی لندن، نیویورک و سیدنی به‌صورت خودکار تنظیم می‌شوند.")
     return "\n".join(lines)
-
 
 def monitor_session_boundaries(state, now, holiday_data, ff_events):
     sent = state.setdefault("session_notices", {})
