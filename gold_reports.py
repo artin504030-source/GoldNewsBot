@@ -294,20 +294,43 @@ def analyst_sources(event):
     return items
 
 def analyst_bias(event, articles):
-    # This is a transparent headline-text signal, not a measured economist consensus.
-    text = " ".join((a["title"] + " " + a["description"]) for a in articles).lower()
-    higher = ["hotter than expected", "higher than expected", "sticky inflation", "inflation remains high",
-              "hawkish", "stronger than expected", "rate hike", "upside surprise"]
-    lower = ["cooler than expected", "lower than expected", "softening inflation", "disinflation",
-             "dovish", "weaker than expected", "rate cut", "downside surprise"]
-    hi = sum(text.count(x) for x in higher)
-    lo = sum(text.count(x) for x in lower)
-    if hi == lo:
-        return "جهت غالب مشخص نیست؛ منابع بررسی‌شده اجماع روشنی نشان نمی‌دهند.", "نامشخص"
-    if hi > lo:
-        return "در تیترها و خلاصه‌های منابع بررسی‌شده، ریسک سناریوی بالاتر/قوی‌تر بیشتر دیده می‌شود؛ این اجماع رسمی نیست.", "بالاتر/قوی‌تر"
-    return "در تیترها و خلاصه‌های منابع بررسی‌شده، ریسک سناریوی پایین‌تر/ضعیف‌تر بیشتر دیده می‌شود؛ این اجماع رسمی نیست.", "پایین‌تر/ضعیف‌تر"
-
+    """One vote per distinct publisher domain; never treat repeated feed copies as consensus."""
+    from urllib.parse import urlparse
+    votes = {}
+    for article in articles or []:
+        domain = (urlparse(article.get("link", "")).netloc or article.get("source", "")).lower()
+        domain = domain.removeprefix("www.")
+        if not domain or domain in votes:
+            continue
+        text = (article.get("title", "") + " " + article.get("description", "")).lower()
+        higher = ("hotter than expected", "higher than expected", "sticky inflation",
+                  "inflation remains high", "hawkish", "stronger than expected",
+                  "rate hike", "upside surprise", "above forecast")
+        lower = ("cooler than expected", "lower than expected", "softening inflation",
+                 "disinflation", "dovish", "weaker than expected", "rate cut",
+                 "downside surprise", "below forecast")
+        hi = any(term in text for term in higher)
+        lo = any(term in text for term in lower)
+        votes[domain] = "higher" if hi and not lo else "lower" if lo and not hi else "mixed"
+    higher_count = sum(v == "higher" for v in votes.values())
+    lower_count = sum(v == "lower" for v in votes.values())
+    mixed_count = sum(v == "mixed" for v in votes.values())
+    if len(votes) < 2:
+        return (
+            f"فقط {len(votes)} ناشر مستقل قابل‌شناسایی بود؛ برای برداشت از اجماع حداقل دو ناشر مستقل لازم است.",
+            "نامشخص",
+        )
+    if higher_count == lower_count:
+        label = "نامشخص"
+        message = "ناشران مستقل بررسی‌شده جهت غالب روشنی نشان نمی‌دهند."
+    elif higher_count > lower_count:
+        label = "بالاتر/قوی‌تر"
+        message = "در دیدگاه ناشران مستقل بررسی‌شده، سناریوی بالاتر/قوی‌تر بیشتر دیده می‌شود؛ این اجماع رسمی عددی نیست."
+    else:
+        label = "پایین‌تر/ضعیف‌تر"
+        message = "در دیدگاه ناشران مستقل بررسی‌شده، سناریوی پایین‌تر/ضعیف‌تر بیشتر دیده می‌شود؛ این اجماع رسمی عددی نیست."
+    return (f"{message} رأی ناشران: بالاتر {higher_count}، پایین‌تر {lower_count}، متعارض/خنثی {mixed_count}؛ "
+            f"تعداد ناشران مستقل: {len(votes)}."), label
 def scenario_text(event, articles):
     bias, label = analyst_bias(event, articles)
     c = event["currency"].upper()
@@ -326,9 +349,9 @@ def scenario_text(event, articles):
                    "عدد ضعیف‌تر از انتظار می‌تواند ارز مربوطه را تحت فشار قرار دهد؛ واکنش طلا وابسته به اثر آن بر دلار و نرخ‌هاست.")
     return bias, label, impacts
 
-def compare_actual_forecast(actual, forecast):
+def compare_actual_forecast(actual, forecast, event_title=""):
     def number(value):
-        match = re.search(r"[-+]?[0-9][0-9,]*(?:\.[0-9]+)?", value or "")
+        match = re.search(r"[-+]?[0-9][0-9,]*(?:\\.[0-9]+)?", value or "")
         if not match:
             return None
         try:
@@ -338,18 +361,27 @@ def compare_actual_forecast(actual, forecast):
     a, f = number(actual), number(forecast)
     if a is None or f is None:
         return "به دلیل نبودن عدد قابل‌مقایسه، نتیجه عددی مشخص نیست."
-    if a > f:
-        return "عدد واقعی بالاتر از پیش‌بینی منتشر شد."
-    if a < f:
-        return "عدد واقعی پایین‌تر از پیش‌بینی منتشر شد."
-    return "عدد واقعی مطابق پیش‌بینی منتشر شد."
-
-def analyst_expectation_comparison(label, actual, forecast):
-    comparison = compare_actual_forecast(actual, forecast)
+    if a == f:
+        return "عدد واقعی مطابق پیش‌بینی منتشر شد."
+    title = (event_title or "").lower()
+    lower_is_stronger = any(term in title for term in ("unemployment", "jobless claims", "initial claims", "continuing claims", "بیکاری"))
+    if lower_is_stronger:
+        better = a < f
+    else:
+        better = a > f
+    direction = "پایین‌تر" if a < f else "بالاتر"
+    quality = "قوی‌تر/بهتر" if better else "ضعیف‌تر/بدتر"
+    return f"عدد واقعی {direction} از پیش‌بینی بود؛ برای این شاخص، نتیجه از نظر اقتصادی {quality} محسوب می‌شود."
+def analyst_expectation_comparison(label, actual, forecast, event_title=""):
+    comparison = compare_actual_forecast(actual, forecast, event_title)
     if label == "نامشخص":
         return "به‌دلیل نبود جهت غالب روشن در دیدگاه منابع، تطابق نتیجه با نظر تحلیل‌گران قابل قضاوت نیست."
-    if "بالاتر" in comparison:
+    if "قوی‌تر/بهتر" in comparison:
         surprise = "بالاتر/قوی‌تر"
+    elif "ضعیف‌تر/بدتر" in comparison:
+        surprise = "پایین‌تر/ضعیف‌تر"
+    elif "مطابق پیش‌بینی" in comparison:
+        surprise = "مطابق پیش‌بینی"
     elif "پایین‌تر" in comparison:
         surprise = "پایین‌تر/ضعیف‌تر"
     elif "مطابق پیش‌بینی" in comparison:
@@ -380,7 +412,7 @@ def event_message(event, pre=True):
             "", "<b>انتظار و دیدگاه تحلیل‌گران</b>",
             html.escape(bias),
             f"جهت غالب برداشت‌شده از گزارش‌ها: <b>{html.escape(label)}</b>",
-            "توجه: این بخش جمع‌بندی تیترها و توضیحات منابع است، نه اجماع عددی رسمی؛ پیش‌بینی عددی همان مقدار درج‌شده در Forex Factory است.",
+            "توجه: رأی‌ها بر اساس ناشر/دامنه مستقل شمرده شده‌اند؛ بازنشرهای یک ناشر رأی جداگانه نیستند. این اجماع رسمی عددی نیست؛ پیش‌بینی عددی همان مقدار Forex Factory است.",
             "", "<b>سه سناریوی قبل از انتشار</b>",
             f"• مطابق پیش‌بینی: {html.escape(impacts[1])}",
             f"• بالاتر/قوی‌تر از پیش‌بینی: {html.escape(impacts[0])}",
@@ -390,9 +422,9 @@ def event_message(event, pre=True):
     else:
         lines += [
             "", f"عدد واقعی: <b>{html.escape(event['actual'] or 'هنوز در منبع ثبت نشده')}</b>",
-            f"مقایسه با پیش‌بینی: <b>{html.escape(compare_actual_forecast(event['actual'], event['forecast']))}</b>",
+            f"مقایسه با پیش‌بینی: <b>{html.escape(compare_actual_forecast(event['actual'], event['forecast'], event['title']))}</b>",
             f"دیدگاه غالب پیش از انتشار: <b>{html.escape(label)}</b>",
-            f"آیا مطابق انتظار تحلیل‌گران بود؟ {html.escape(analyst_expectation_comparison(label, event['actual'], event['forecast']))}",
+            f"آیا مطابق انتظار تحلیل‌گران بود؟ {html.escape(analyst_expectation_comparison(label, event['actual'], event['forecast'], event['title']))}",
             f"جمع‌بندی دیدگاه منابع پیش از انتشار: {html.escape(bias)}",
             "", "نتیجه بالا بر اساس عدد واقعی و پیش‌بینی ثبت‌شده در تقویم است؛ واکنش بازار ممکن است به جزئیات گزارش و بازده اوراق وابسته باشد."
         ]
