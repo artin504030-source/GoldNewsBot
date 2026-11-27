@@ -131,7 +131,7 @@ class TargetFilterTests(unittest.TestCase):
     def test_pre_analysis_does_not_claim_cross_market_confirmation_when_missing(self):
         from datetime import datetime, timezone, timedelta
         now = datetime.now(timezone.utc)
-        gold = [(now - timedelta(hours=13-i), 2000 + i * 3) for i in range(13)]
+        gold = [(now - timedelta(hours=13-i), 2000 - i * 3) for i in range(13)]
         status, evidence = classify_pre(gold, None, "3.2%", "3.0%", "US CPI", {})
         self.assertIn("تا حدی پیش‌خور", status)
         self.assertIn("داده کافی نیست", evidence)
