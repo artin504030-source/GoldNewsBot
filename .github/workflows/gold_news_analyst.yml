@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows:
       - "Gold News Bot"
+      - "Gold News Breaking Monitor"
     types:
       - completed
 
