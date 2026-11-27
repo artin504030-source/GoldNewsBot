@@ -60,8 +60,10 @@ class TargetFilterTests(unittest.TestCase):
 
     def test_pin_failure_does_not_interrupt_delivery(self):
         import apps.gold_priced_in_analyst.__main__ as module
-        with patch.object(module, "telegram", side_effect=RuntimeError("not enough rights")), \\
-             patch("builtins.print") as log:
+        with (
+            patch.object(module, "telegram", side_effect=RuntimeError("not enough rights")),
+            patch("builtins.print") as log,
+        ):
             self.assertFalse(module.pin_channel_message(321))
             self.assertTrue(any("Could not silently pin" in str(call) for call in log.call_args_list))
 
