@@ -11,7 +11,7 @@ on:
       - Gold News Analyst
       - Gold Reports Bot
       - Gold Priced-In Analyst
-    types: [completed]
+    types: [in_progress, completed]
     branches: [main]
 
 permissions:
@@ -52,6 +52,7 @@ jobs:
         env:
           WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_STATUS: ${{ github.event.workflow_run.status }}
           RUN_ID: ${{ github.event.workflow_run.id }}
           RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
           RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
@@ -77,6 +78,7 @@ jobs:
               'run_id': int(os.environ['RUN_ID']),
               'run_number': int(os.environ['RUN_NUMBER']),
               'run_attempt': int(os.environ['RUN_ATTEMPT']),
+              'status': os.environ.get('RUN_STATUS') or 'completed',
               'conclusion': os.environ.get('CONCLUSION') or 'unknown',
               'event': os.environ.get('EVENT_NAME'),
               'branch': os.environ.get('BRANCH_NAME'),
