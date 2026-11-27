@@ -51,7 +51,15 @@ def fetch_article(item, enabled=True, session=None):
         publisher_url = resolve_article_url(url, session=session, timeout=15)
         html, final_url = fetch_public_page(publisher_url, session=session, timeout=12, max_bytes=1_000_000, max_redirects=3)
         body = extract_text(html, max_chars=24000, min_chars=80)
-        result.update({"body": body, "final_url": final_url, "status": "fetched" if len(body) >= 300 else "partial"})
+        if len(body) < 300 and item.get("content_type") == "economic_press_conference_transcript":
+            archived = str(item.get("summary") or "").strip()
+            if len(archived) >= 300:
+                body = archived[:24000]
+                result["status"] = "archived_transcript_fallback"
+                result["error"] = "متن نشست از آرشیو Gold News استفاده شد؛ دریافت مجدد از ناشر کامل نبود"
+        if not result.get("status") == "archived_transcript_fallback":
+            result["status"] = "fetched" if len(body) >= 300 else "partial"
+        result.update({"body": body, "final_url": final_url})
         if len(body) < 300:
             result["error"] = "صفحه ناشر باز شد، اما متن مقاله کافی استخراج نشد"
     except Exception as exc:
