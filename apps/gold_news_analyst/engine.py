@@ -124,15 +124,18 @@ CURRENCY_TERMS = {
     "CAD": ("canada", "bank of canada", "boc", "canadian dollar"),
 }
 
-def _symbol_impacts(text, labels, hawkish, dovish, above, below, risk_off, risk_easing, supply_shock, company):
+def _symbol_impacts(text, labels, hawkish, dovish, above, below, risk_off, risk_easing, supply_shock, company, headline_text=""):
     """Classify the 16 instruments in Gold Prices Bot using news transmission channels."""
     currency_bias = {}
-    mentioned = {ccy for ccy, terms in CURRENCY_TERMS.items() if any(term in text for term in terms)}
+    mention_source = (headline_text or text).lower()
+    mentioned = {ccy for ccy, terms in CURRENCY_TERMS.items() if _contains(mention_source, terms)}
     macro_labels = {"سیاست پولی و نرخ بهره", "تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی"}
     if labels and set(labels) & macro_labels and not mentioned:
         mentioned.add("USD")
-    positive_surprise = above and bool(set(labels) & {"تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی"})
-    negative_surprise = below and bool(set(labels) & {"تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی"})
+    surprise_relevant = bool(set(labels) & {"تورم و شاخص قیمت", "اشتغال و دستمزد", "رشد اقتصادی"})
+    inverse_metric = any(term in mention_source for term in ("unemployment", "jobless claims", "initial claims", "continuing claims", "بیکاری", "متقاضیان بیمه بیکاری"))
+    positive_surprise = surprise_relevant and ((below if inverse_metric else above))
+    negative_surprise = surprise_relevant and ((above if inverse_metric else below))
     if hawkish or positive_surprise:
         bias = 1
     elif dovish or negative_surprise:
@@ -295,7 +298,7 @@ def analyse(item, article_text="", market_snapshot=None):
     if not source_text_ok: confidence = "پایین؛ متن کامل خبر در دسترس نیست"
     if company or (hawkish and dovish): confidence = "پایین"
     bull, bear, neutral = _scenarios(labels, company)
-    symbol_impacts = _symbol_impacts(combined, labels, hawkish, dovish, above, below, risk_off, risk_easing, supply_shock, company)
+    symbol_impacts = _symbol_impacts(combined, labels, hawkish, dovish, above, below, risk_off, risk_easing, supply_shock, company, headline)
     return {
         "direction": direction, "drivers": drivers, "confidence": confidence,
         "events": labels, "market_lines": [], "market_warnings": [], "symbol_impacts": symbol_impacts,
