@@ -351,7 +351,7 @@ def scenario_text(event, articles):
 
 def compare_actual_forecast(actual, forecast, event_title=""):
     def number(value):
-        match = re.search(r"[-+]?[0-9][0-9,]*(?:\\.[0-9]+)?", value or "")
+        match = re.search(r"[-+]?[0-9][0-9,]*(?:\.[0-9]+)?", value or "")
         if not match:
             return None
         try:
@@ -375,26 +375,18 @@ def compare_actual_forecast(actual, forecast, event_title=""):
 def analyst_expectation_comparison(label, actual, forecast, event_title=""):
     comparison = compare_actual_forecast(actual, forecast, event_title)
     if label == "نامشخص":
-        return "به‌دلیل نبود جهت غالب روشن در دیدگاه منابع، تطابق نتیجه با نظر تحلیل‌گران قابل قضاوت نیست."
-    if "قوی‌تر/بهتر" in comparison:
-        surprise = "بالاتر/قوی‌تر"
-    elif "ضعیف‌تر/بدتر" in comparison:
-        surprise = "پایین‌تر/ضعیف‌تر"
-    elif "مطابق پیش‌بینی" in comparison:
-        surprise = "مطابق پیش‌بینی"
-    elif "پایین‌تر" in comparison:
-        surprise = "پایین‌تر/ضعیف‌تر"
-    elif "مطابق پیش‌بینی" in comparison:
-        surprise = "مطابق پیش‌بینی"
-    else:
-        return "به‌دلیل نبود عدد واقعی یا پیش‌بینی قابل‌مقایسه، تطابق با نظر تحلیل‌گران مشخص نیست."
+        return "به‌دلیل نبود جهت غالب روشن در دیدگاه منابع مستقل، تطابق نتیجه با نظر تحلیل‌گران قابل قضاوت نیست."
+    if "مطابق پیش‌بینی" in comparison:
+        return "عدد واقعی مطابق پیش‌بینی تقویم بود؛ این نتیجه به‌تنهایی دیدگاه جهت‌دار منابع درباره غافلگیری را تأیید نمی‌کند."
+    if "قابل‌مقایسه نیست" in comparison:
+        return "به‌دلیل نبود عدد واقعی یا پیش‌بینی قابل‌مقایسه، تطابق با دیدگاه منابع مشخص نیست."
+    # Compare the raw direction of the surprise because publisher headlines may
+    # describe the number itself (higher/lower), not whether it is economically good.
+    higher = "بالاتر از پیش‌بینی" in comparison
+    surprise = "بالاتر/قوی‌تر" if higher else "پایین‌تر/ضعیف‌تر"
     if surprise == label:
-        return f"نتیجه واقعی در جهت غالبی بود که در دیدگاه منابع دیده می‌شد ({label})؛ بنابراین با آن دیدگاه‌ها هم‌جهت بود."
-    if surprise == "مطابق پیش‌بینی":
-        return "عدد واقعی دقیقاً مطابق پیش‌بینی تقویم بود؛ دیدگاه جهت‌دار منابع درباره غافلگیری بالاتر/پایین‌تر تأیید نشد."
-    return f"نتیجه واقعی {surprise} بود، درحالی‌که جهت غالب تیترها {label} را نشان می‌داد؛ بنابراین با دیدگاه غالب منابع هم‌جهت نبود."
-
-
+        return f"نتیجه واقعی از نظر عددی {surprise} بود و با جهت غالب گزارش‌های منابع هم‌جهت است."
+    return f"نتیجه واقعی از نظر عددی {surprise} بود، اما با جهت غالب گزارش‌های منابع ({label}) هم‌جهت نیست."
 def event_message(event, pre=True):
     articles = analyst_sources(event)
     bias, label, impacts = scenario_text(event, articles)
