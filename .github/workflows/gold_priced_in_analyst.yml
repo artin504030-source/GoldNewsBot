@@ -2,6 +2,9 @@ name: Gold Priced-In Analyst
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Gold Reports Bot"]
+    types: [completed]
   schedule:
     - cron: "*/5 * * * *"
 
