@@ -18,7 +18,7 @@ on:
     # 09:00 Asia/Kabul (UTC+4:30), every day; Python chooses monthly/weekly/daily report by weekday.
     - cron: "30 4 * * 0-6"
     # Monitor high-impact releases and publish pre/post reports.
-    - cron: "*/10 * * * *"
+    - cron: "6,16,26,36,46,56 * * * *"
 
 permissions:
   contents: write
