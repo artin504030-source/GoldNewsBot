@@ -306,6 +306,47 @@ def process_entry(entry, token, chat_id, seen, archive, session):
     return True
 
 
+def fetch_conference_feed(session, retries=3, backoff_seconds=2):
+    """Fetch Google News RSS with bounded retries for temporary throttling/outages."""
+    retryable_statuses = {429, 500, 502, 503, 504}
+    for attempt in range(retries + 1):
+        try:
+            response = session.get(
+                FEED_URL,
+                headers={"User-Agent": "GoldNewsBot/2.0"},
+                timeout=25,
+            )
+        except requests.RequestException as exc:
+            if attempt >= retries:
+                raise
+            delay = min(backoff_seconds * (2 ** attempt), 30)
+            print(
+                f"Temporary press-conference feed network error "
+                f"({type(exc).__name__}); retry {attempt + 1}/{retries} in {delay}s."
+            )
+            time.sleep(delay)
+            continue
+
+        status = getattr(response, "status_code", 200)
+        if status in retryable_statuses and attempt < retries:
+            retry_after = (getattr(response, "headers", {}) or {}).get("Retry-After")
+            try:
+                delay = min(max(float(retry_after), 1), 30) if retry_after else min(backoff_seconds * (2 ** attempt), 30)
+            except (TypeError, ValueError):
+                delay = min(backoff_seconds * (2 ** attempt), 30)
+            print(
+                f"Google News press-conference feed returned HTTP {status}; "
+                f"retry {attempt + 1}/{retries} in {delay:g}s."
+            )
+            time.sleep(delay)
+            continue
+
+        response.raise_for_status()
+        return response.content
+
+    raise RuntimeError("Press-conference feed retries exhausted")
+
+
 def main():
     token = os.getenv("BOT_TOKEN", "").strip()
     chat_id = os.getenv("CHANNEL_ID", "").strip()
@@ -316,9 +357,15 @@ def main():
     if not isinstance(archive, list):
         raise RuntimeError("news_archive.json must contain a list")
     session = requests.Session()
-    response = session.get(FEED_URL, headers={"User-Agent": "GoldNewsBot/2.0"}, timeout=25)
-    response.raise_for_status()
-    entries = feedparser.parse(response.content).entries
+    try:
+        feed_content = fetch_conference_feed(session)
+    except requests.RequestException as exc:
+        print(
+            "WARNING: Economic press-conference scan skipped because Google News "
+            f"feed remained unavailable after retries: {type(exc).__name__}: {str(exc)[:200]}"
+        )
+        return
+    entries = feedparser.parse(feed_content).entries
     published = 0
     for entry in sorted(entries, key=lambda item: published_at(item) or datetime.min.replace(tzinfo=timezone.utc)):
         if published >= MAX_ITEMS:
