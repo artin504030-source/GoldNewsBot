@@ -63,9 +63,16 @@ def fetch_article(item, enabled=True, session=None):
         if len(body) < 300:
             result["error"] = "صفحه ناشر باز شد، اما متن مقاله کافی استخراج نشد"
     except Exception as exc:
-        # Article fetch is best-effort; the analyst must explicitly downgrade confidence.
-        result["status"] = "failed"
-        result["error"] = f"دریافت/تبدیل لینک خبر ناموفق بود: {type(exc).__name__}: {str(exc)[:160]}"
+        # Prefer the exact original transcript archived by Gold News if the publisher
+        # blocks a second fetch; this keeps the analyst grounded in the posted source.
+        archived = str(item.get("summary") or "").strip()
+        if item.get("content_type") == "economic_press_conference_transcript" and len(archived) >= 300:
+            result["body"] = archived[:24000]
+            result["status"] = "archived_transcript_fallback"
+            result["error"] = "دریافت مجدد از ناشر ناموفق بود؛ تحلیل از متن نشست ذخیره‌شده توسط Gold News انجام شد"
+        else:
+            result["status"] = "failed"
+            result["error"] = f"دریافت/تبدیل لینک خبر ناموفق بود: {type(exc).__name__}: {str(exc)[:160]}"
     return result
 
 def main():
