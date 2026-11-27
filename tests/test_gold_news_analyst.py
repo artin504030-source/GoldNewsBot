@@ -228,4 +228,46 @@ class AnalystTests(unittest.TestCase):
             send_mock.assert_not_called()
             self.assertFalse(state_path.exists())
 
+
+    def test_eurozone_hicp_actual_forecast_and_gold_path(self):
+        from apps.gold_news_analyst.regional_macro import analyze_regional_macro
+        item = self.item("Eurozone HICP Actual: 2.8% Forecast: 2.6% Previous: 2.7%", source="Eurostat")
+        result = analyze_regional_macro(item, "Euro area inflation report released with headline and core details. " * 8)
+        self.assertEqual(result["region"], "🇪🇺 اروپا / منطقه یورو")
+        self.assertEqual(result["indicator"], "HICP / Core HICP")
+        self.assertEqual(result["surprise"], "قوی‌تر/بالاتر از انتظار")
+        self.assertIn("غیرمستقیم", result["gold"])
+
+    def test_uk_boe_rate_policy_is_not_assumed_without_statement(self):
+        from apps.gold_news_analyst.regional_macro import analyze_regional_macro
+        item = self.item("Bank of England rate decision", source="Bank of England")
+        result = analyze_regional_macro(item)
+        self.assertEqual(result["currency"], "GBP")
+        self.assertIn("قابل تعیین نیست", result["policy"])
+
+    def test_japan_cpi_lower_than_forecast_is_weaker(self):
+        from apps.gold_news_analyst.regional_macro import analyze_regional_macro
+        item = self.item("Japan CPI Actual: 2.1% Forecast: 2.4% Previous: 2.3%", source="Bank of Japan")
+        result = analyze_regional_macro(item)
+        self.assertEqual(result["region"], "🇯🇵 ژاپن")
+        self.assertEqual(result["surprise"], "ضعیف‌تر/پایین‌تر از انتظار")
+        self.assertEqual(result["currency"], "JPY")
+
+    def test_china_pmi_preview_does_not_invent_actual(self):
+        from apps.gold_news_analyst.regional_macro import analyze_regional_macro
+        item = self.item("China PMI preview: economists expect 50.2", source="Google News — Asia Economic Expectations")
+        result = analyze_regional_macro(item)
+        self.assertEqual(result["region"], "🇨🇳 چین")
+        self.assertIsNone(result["actual"])
+        self.assertIsNone(result["surprise"])
+        self.assertIn("پیش‌نمایش", result["stage"])
+
+    def test_regional_macro_is_rendered_in_analyst_report(self):
+        item = self.item("Eurozone HICP Actual: 2.8% Forecast: 2.6% Previous: 2.7%", source="Eurostat")
+        with patch("apps.gold_news_analyst.report.translate_title_to_persian", return_value="تورم اروپا"):
+            output = render(item)
+        self.assertIn("تحلیل تخصصی گزارش اقتصادی", output)
+        self.assertIn("🇪🇺 اروپا", output)
+        self.assertIn("EUR", output)
+
 if __name__ == "__main__": unittest.main()
