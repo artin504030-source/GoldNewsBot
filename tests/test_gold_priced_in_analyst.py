@@ -148,7 +148,7 @@ class TargetFilterTests(unittest.TestCase):
         gold = [(now - timedelta(hours=13-i), 2000 - i * 3) for i in range(13)]
         status, evidence = classify_pre(gold, now + timedelta(hours=1), "3.2%", "3.0%", "US CPI", {})
         self.assertIn("حرکت پیش از انتشار مشاهده شد", status)
-        self.assertIn("انتساب به رویداد اثبات نشده", evidence)
+        self.assertIn("نمی‌توان گفت همین رویداد پیش‌خور شده", evidence)
         self.assertIn("داده کافی نیست", evidence)
 
     def test_post_requires_event_time_and_bars(self):
