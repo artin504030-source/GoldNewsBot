@@ -63,6 +63,13 @@ jobs:
           BREAKING_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.breaking_only && 'true' || 'false' }}
         run: python news_bot.py
 
+      - name: Collect and publish economic press conference transcripts
+        if: github.event_name != 'workflow_dispatch' || inputs.dry_run != true
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+        run: python -m apps.gold_news_press_conferences
+
       - name: Send failure alert
         if: failure()
         env:
@@ -75,7 +82,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add seen_news.json news_archive.json source_health.json
+          git add seen_news.json news_archive.json source_health.json press_conferences_seen.json
           if ! git diff --cached --quiet; then
             git commit -m "Update processed news history"
             for attempt in 1 2 3; do
