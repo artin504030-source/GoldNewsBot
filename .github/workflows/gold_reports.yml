@@ -17,8 +17,9 @@ on:
   schedule:
     # 09:00 Asia/Kabul (UTC+4:30), every day; Python chooses monthly/weekly/daily report by weekday.
     - cron: "30 4 * * 0-6"
-    # Monitor high-impact releases and publish pre/post reports.
-    - cron: "6,16,26,36,46,56 * * * *"
+    # Check session boundaries and high-impact releases every five minutes.
+    # Offset from minute 0 to reduce GitHub Actions queue congestion.
+    - cron: "2-59/5 * * * *"
 
 permissions:
   contents: write
