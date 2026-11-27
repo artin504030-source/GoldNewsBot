@@ -1,4 +1,10 @@
+import sys
+import types
 import unittest
+
+# gold_reports imports BeautifulSoup for calendar scraping; these unit tests exercise
+# pure analysis helpers and do not need the optional parser dependency.
+sys.modules.setdefault("bs4", types.SimpleNamespace(BeautifulSoup=object))
 from gold_reports import analyst_bias, compare_actual_forecast, analyst_expectation_comparison
 
 
