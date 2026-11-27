@@ -4,6 +4,7 @@ import json
 import os
 import re
 import tempfile
+import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from html import escape
@@ -45,12 +46,28 @@ def save_state(state):
 
 
 def telegram(method, payload, timeout=30):
-    response = requests.post(f"https://api.telegram.org/bot{TOKEN}/{method}", json=payload, timeout=timeout)
-    response.raise_for_status()
-    data = response.json()
-    if not data.get("ok"):
-        raise RuntimeError(f"Telegram {method} failed: {data.get('description', 'unknown error')}")
-    return data["result"]
+    for attempt in range(4):
+        response = requests.post(f"https://api.telegram.org/bot{TOKEN}/{method}", json=payload, timeout=timeout)
+        try:
+            data = response.json()
+        except ValueError:
+            response.raise_for_status()
+            raise RuntimeError(f"Telegram {method} returned invalid JSON.")
+
+        if response.status_code == 429 or data.get("error_code") == 429:
+            retry_after = int((data.get("parameters") or {}).get("retry_after", 2))
+            if attempt == 3:
+                raise RuntimeError(f"Telegram {method} rate limited after retries; retry_after={retry_after}s.")
+            wait_seconds = min(max(retry_after + 1, 2), 60)
+            print(f"Telegram rate limit on {method}; waiting {wait_seconds}s before retry.")
+            time.sleep(wait_seconds)
+            continue
+
+        response.raise_for_status()
+        if not data.get("ok"):
+            raise RuntimeError(f"Telegram {method} failed: {data.get('description', 'unknown error')}")
+        return data["result"]
+    raise RuntimeError(f"Telegram {method} failed after retry attempts.")
 
 
 def is_target_post(message):
@@ -134,11 +151,36 @@ def process_update(update):
     return True
 
 
+def discard_pending_updates(state):
+    offset = int(state.get("offset", 0))
+    discarded = 0
+    for _ in range(10):
+        updates = telegram("getUpdates", {
+            "offset": offset,
+            "timeout": 0,
+            "allowed_updates": ["channel_post", "edited_channel_post"],
+        }, timeout=25)
+        if not updates:
+            break
+        updates = sorted(updates, key=lambda item: item["update_id"])
+        offset = int(updates[-1]["update_id"]) + 1
+        discarded += len(updates)
+        state["offset"] = offset
+        save_state(state)
+        if len(updates) < 100:
+            break
+    print(f"Discarded {discarded} pending historical Telegram updates; next offset={offset}.")
+    return discarded
+
+
 def main():
     if not TOKEN or not CHAT_ID:
         raise RuntimeError("Set GOLD_PRICED_IN_ANALYST_BOT_TOKEN and CHANNEL_ID.")
     verify_channel_admin()
     state = load_state()
+    if os.getenv("PRICED_IN_MODE", "analyze").strip().lower() == "discard_pending":
+        discard_pending_updates(state)
+        return
     offset = int(state.get("offset", 0))
     result = telegram("getUpdates", {
         "offset": offset,
