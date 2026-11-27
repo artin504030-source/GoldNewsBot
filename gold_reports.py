@@ -28,6 +28,8 @@ GOOGLE_RSS = "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=U
 
 # Do not publish stale calendar results when the monitor resumes after an outage.
 POST_EVENT_GRACE = timedelta(hours=2)
+# Session notices can be recovered if GitHub delays a scheduled runner.
+SESSION_BOUNDARY_GRACE = timedelta(hours=2)
 
 
 # Standard local market-session hours. ZoneInfo applies seasonal DST changes automatically.
@@ -171,7 +173,7 @@ def monitor_session_boundaries(state, now, holiday_data, ff_events):
             for kind, boundary, verb in (("open", opening, "باز شد"), ("close", closing, "بسته شد")):
                 delta = (utc_now - boundary.astimezone(ZoneInfo("UTC"))).total_seconds()
                 key = f"{session['country']}:{session_date.isoformat()}:{kind}"
-                if 0 <= delta <= 45 * 60 and not sent.get(key):
+                if 0 <= delta <= SESSION_BOUNDARY_GRACE.total_seconds() and not sent.get(key):
                     time_label = boundary.strftime("%Y-%m-%d %H:%M" if boundary.date() != now.date() else "%H:%M")
                     snapshot = session_status_text(now, holiday_data, ff_events).splitlines()[1:]
                     message = (
@@ -184,6 +186,7 @@ def monitor_session_boundaries(state, now, holiday_data, ff_events):
                     )
                     send_telegram(message)
                     sent[key] = now.isoformat()
+                    print(f"Session boundary notice sent | {session['name']} | {kind} | scheduled={boundary.isoformat()} | delay_seconds={int(delta)}")
 
 def now_kabul():
     return datetime.now(KABUL)
