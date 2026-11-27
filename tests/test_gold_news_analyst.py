@@ -270,4 +270,19 @@ class AnalystTests(unittest.TestCase):
         self.assertIn("🇪🇺 اروپا", output)
         self.assertIn("EUR", output)
 
+
+    def test_india_rbi_policy_report_is_classified(self):
+        from apps.gold_news_analyst.regional_macro import analyze_regional_macro
+        item = self.item("Reserve Bank of India repo rate decision", source="Google News — Asia Official Economic Releases")
+        result = analyze_regional_macro(item)
+        self.assertEqual(result["region"], "🇮🇳 هند")
+        self.assertEqual(result["currency"], "INR")
+
+    def test_south_korea_cpi_is_not_misclassified_as_china_or_japan(self):
+        from apps.gold_news_analyst.regional_macro import analyze_regional_macro
+        item = self.item("South Korea CPI Actual: 2.4% Forecast: 2.2% Previous: 2.1%", source="Google News — Asia Official Economic Releases")
+        result = analyze_regional_macro(item)
+        self.assertEqual(result["region"], "🇰🇷 کوریای جنوبی")
+        self.assertEqual(result["surprise"], "قوی‌تر/بالاتر از انتظار")
+
 if __name__ == "__main__": unittest.main()
