@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 import requests
 from .engine import analyse, parse_time
 from .us_macro import render_us_macro_section
+from .regional_macro import render_regional_macro_section
 
 KABUL = ZoneInfo("Asia/Kabul")
 
@@ -83,6 +84,7 @@ def render(item, article=None, market_snapshot=None):
         "شرط بازبینی: " + escape(a["invalidate"]),
     ]
     lines += render_us_macro_section(item, article.get("body", ""))
+    lines += render_regional_macro_section(item, article.get("body", ""))
     lines += ["", "<b>نمادهای مرتبط و اثر احتمالی</b>"]
     if a.get("symbol_impacts"):
         for impact in a["symbol_impacts"]:
