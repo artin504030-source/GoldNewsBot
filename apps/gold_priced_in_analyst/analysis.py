@@ -8,6 +8,7 @@ import tempfile
 import requests
 
 YAHOO_SYMBOL = "GC=F"  # COMEX gold futures; used as a transparent proxy, not broker XAUUSD.
+CROSS_MARKET_SYMBOLS = {"DXY": "DX-Y.NYB", "US10Y": "^TNX"}
 
 
 def parse_event_time(text):
@@ -52,6 +53,49 @@ def get_bars(session=None):
     return points
 
 
+
+def get_cross_market_bars(session=None):
+    """Best-effort DXY and US 10Y nominal-yield proxies."""
+    session = session or requests.Session()
+    result, errors = {}, {}
+    for label, symbol in CROSS_MARKET_SYMBOLS.items():
+        try:
+            response = session.get(
+                f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}",
+                params={"range": "5d", "interval": "5m"},
+                headers={"User-Agent": "Mozilla/5.0 GoldPricedInAnalyst/1.0"},
+                timeout=20,
+            )
+            response.raise_for_status()
+            payload = response.json()["chart"]["result"][0]
+            timestamps = payload.get("timestamp") or []
+            closes = payload["indicators"]["quote"][0].get("close") or []
+            points = [(datetime.fromtimestamp(int(ts), timezone.utc), float(px))
+                      for ts, px in zip(timestamps, closes) if px is not None]
+            if len(points) < 10:
+                raise ValueError("insufficient bars")
+            result[label] = points
+        except Exception as exc:
+            errors[label] = type(exc).__name__
+    return result, errors
+
+
+def _change(points, start, end):
+    rows = [(t, p) for t, p in (points or []) if start <= t <= end]
+    if len(rows) < 2 or rows[0][1] == 0:
+        return None
+    return (rows[-1][1] / rows[0][1] - 1) * 100
+
+
+def _cross_market_lines(data, start, end):
+    labels = {"DXY": "شاخص دلار", "US10Y": "بازده اسمی اوراق ۱۰ساله"}
+    output = []
+    for key, label in labels.items():
+        change = _change((data or {}).get(key), start, end)
+        output.append(f"{label}: {change:+.2f}%" if change is not None else f"{label}: داده کافی نیست")
+    return output
+
+
 def expected_gold_direction(event_name, forecast, previous):
     name = (event_name or "").lower()
     f, p = numeric(forecast), numeric(previous)
@@ -64,7 +108,7 @@ def expected_gold_direction(event_name, forecast, previous):
     return None
 
 
-def classify_pre(points, event_dt, forecast, previous, event_name):
+def classify_pre(points, event_dt, forecast, previous, event_name, cross_market=None):
     now = datetime.now(timezone.utc)
     usable = [(t, p) for t, p in points if t <= now]
     if len(usable) < 10:
@@ -80,19 +124,27 @@ def classify_pre(points, event_dt, forecast, previous, event_name):
             f"تغییر ۱۲ ساعته طلا {change:+.2f}% بوده؛ اما از پیش‌بینی و عدد قبلی، جهت مورد انتظار این رویداد قابل استنتاج مطمئن نیست."
         )
     aligned = (change < 0 and expected == "down") or (change > 0 and expected == "up")
+    cross_start = end_t - timedelta(hours=12)
+    dxy = _change((cross_market or {}).get("DXY"), cross_start, end_t)
+    us10y = _change((cross_market or {}).get("US10Y"), cross_start, end_t)
+    cross_agrees = dxy is not None and us10y is not None and (
+        (expected == "up" and dxy < 0 and us10y < 0) or
+        (expected == "down" and dxy > 0 and us10y > 0)
+    )
+    cross_note = "؛ ".join(_cross_market_lines(cross_market, cross_start, end_t))
     if abs(change) < 0.20:
         return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", (
             f"تغییر ۱۲ ساعته طلا {change:+.2f}% بوده و حرکت هم‌جهت معناداری با اثر مورد انتظار دیده نمی‌شود؛ این به‌تنهایی نبود پیش‌خورشدن را ثابت نمی‌کند."
         )
     if aligned:
         return "تا حدی پیش‌خور شده؛ شواهد محدود", (
-            f"تغییر ۱۲ ساعته طلا {change:+.2f}% و هم‌جهت با اثر معمولِ مورد انتظار از ارقام پیش‌بینی/قبلی است. این فقط قرینه است، نه اثبات؛ برای تأیید به داده انتظارات بازار، دلار و بازده اوراق نیاز است."
+            f"تغییر ۱۲ ساعته طلا {change:+.2f}% و هم‌جهت با اثر معمولِ مورد انتظار از ارقام پیش‌بینی/قبلی است. وضعیت بازارهای تأییدی: {cross_note}. " + ("دلار و بازده نیز هم‌جهت‌اند؛ شواهد چندبازاری قوی‌تر است، اما اثبات قطعی نیست." if cross_agrees else "تأیید هم‌زمان دلار و بازده کامل نیست؛ اطمینان محدود باقی می‌ماند.")
         )
     return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", (
-        f"تغییر ۱۲ ساعته طلا {change:+.2f}% با جهت معمولِ مورد انتظار از ارقام پیش‌بینی/قبلی هم‌راستا نیست. خبر ممکن است از مسیر دیگری قیمت‌گذاری شده باشد؛ داده تکمیلی لازم است."
+        f"تغییر ۱۲ ساعته طلا {change:+.2f}% با جهت معمولِ مورد انتظار از ارقام پیش‌بینی/قبلی هم‌راستا نیست. خبر ممکن است از مسیر دیگری قیمت‌گذاری شده باشد؛ داده تکمیلی لازم است. وضعیت بازارهای تأییدی: {cross_note}."
     )
 
-def classify_post(points, event_dt, actual, forecast):
+def classify_post(points, event_dt, actual, forecast, cross_market=None):
     if not event_dt:
         return "زمان دقیق رویداد در پیام قابل استخراج نیست؛ واکنش پس از انتشار به‌طور معتبر جدا نمی‌شود."
     actual_n, forecast_n = numeric(actual), numeric(forecast)
@@ -108,7 +160,8 @@ def classify_post(points, event_dt, actual, forecast):
     p0, p1 = before[-1][1], after[-1][1]
     move = (p1 / p0 - 1) * 100
     elapsed = max(0, int((after[-1][0] - event_dt).total_seconds() / 60))
-    return f"عدد واقعی {surprise} بود. قرارداد آتی طلا در {elapsed} دقیقه نخستِ داده‌های موجود پس از انتشار {move:+.2f}% تغییر کرد. این واکنش مشاهده‌شده است؛ نسبت‌دادن تمام حرکت به خبر بدون کنترل اخبار هم‌زمان قطعی نیست."
+    cross_note = "؛ ".join(_cross_market_lines(cross_market, event_dt - timedelta(minutes=60), window_end))
+    return f"عدد واقعی {surprise} بود. قرارداد آتی طلا در {elapsed} دقیقه نخستِ داده‌های موجود پس از انتشار {move:+.2f}% تغییر کرد. وضعیت بازارهای هم‌زمان: {cross_note}. این واکنش مشاهده‌شده است؛ نسبت‌دادن تمام حرکت به خبر بدون کنترل اخبار هم‌زمان قطعی نیست."
 
 
 def impact_text(kind, text, fields):
@@ -137,11 +190,12 @@ def analyze_report(kind, text, fields):
         data_error = f"داده چارت دریافت نشد ({type(exc).__name__})."
     else:
         data_error = ""
+    cross_market, cross_errors = get_cross_market_bars()
     impact, symbols = impact_text(kind, text, fields)
     lines = ["🟡 <b>بررسی پیش‌خورشدن و واکنش بازار</b>", ""]
     if kind == "pre":
         if points:
-            status, evidence = classify_pre(points, event_dt, fields.get("forecast", ""), fields.get("previous", ""), text)
+            status, evidence = classify_pre(points, event_dt, fields.get("forecast", ""), fields.get("previous", ""), text, cross_market)
         else:
             status, evidence = "اطلاعات کافی برای تشخیص وجود ندارد", data_error
         lines += [f"🔎 <b>وضعیت پیش‌خورشدن:</b> {escape(status)}", escape(evidence)]
@@ -150,13 +204,21 @@ def analyze_report(kind, text, fields):
         lines += ["", "توجه: حرکت قیمت به‌تنهایی اثبات نمی‌کند خبر پیش‌خور شده است. برای نتیجه قطعی، داده انتظارات بازار و تغییرات نرخ/دلار نیز لازم است."]
     else:
         if points:
-            reaction = classify_post(points, event_dt, fields.get("actual", ""), fields.get("forecast", ""))
+            reaction = classify_post(points, event_dt, fields.get("actual", ""), fields.get("forecast", ""), cross_market)
         else:
             reaction = data_error
         lines += [f"📊 <b>واکنش پس از انتشار:</b> {escape(reaction)}", "", "<b>تأثیر بنیادی احتمالی</b>", escape(impact)]
         lines += ["", "<b>نمادهای مرتبط</b>", escape(symbols)]
         lines += ["", "واکنش کوتاه‌مدت قرارداد آتی طلا نماینده دقیق قیمت اجرایی XAUUSD نیست و ممکن است تحت‌تأثیر خبرهای هم‌زمان باشد."]
-    lines += ["", "<i>منبع چارت: Yahoo Finance، قرارداد آتی طلا GC=F؛ داده ممکن است با تأخیر باشد. این گزارش سیگنال خرید یا فروش نیست.</i>",
+    lines += ["", "<b>وضعیت داده‌های بین‌بازاری</b>"]
+    for label, symbol in CROSS_MARKET_SYMBOLS.items():
+        if label in cross_errors:
+            lines.append(f"• {escape(label)} ({escape(symbol)}): دریافت نشد؛ تحلیل با محدودیت داده همراه است.")
+        else:
+            latest = cross_market[label][-1][0]
+            age = max(0, int((datetime.now(timezone.utc) - latest).total_seconds() / 60))
+            lines.append(f"• {escape(label)} ({escape(symbol)}): آخرین کندل {age} دقیقه قبل.")
+    lines += ["", "<i>منابع: Yahoo Finance؛ طلا GC=F (قرارداد آتی، نه قیمت اجرایی XAUUSD)، دلار DX-Y.NYB و ^TNX (بازده اسمی ۱۰ساله، نه بازده واقعی). داده‌ها ممکن است با تأخیر باشند. این گزارش سیگنال خرید یا فروش نیست.</i>",
               "", "<b>Gold Admin</b>", "<b>Priced-In Admin</b>"]
     return "\n".join(lines), "GC=F", event_dt
 
