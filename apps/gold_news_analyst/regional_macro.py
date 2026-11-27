@@ -7,7 +7,7 @@ from html import escape
 # an unlabelled number is never treated as an Actual, Forecast, or Previous.
 REGIONS = {
     "🇪🇺 اروپا / منطقه یورو": {
-        "terms": ("eurozone", "euro area", "european central bank", "ecb", "eurostat", "european union", "european economy"),
+        "terms": ("europe", "eurozone", "euro area", "european central bank", "ecb", "eurostat", "european union", "european economy"),
         "checks": [
             "EURUSD و EUR crosses: واکنش یورو را در برابر دلار و ارزهای دیگر بررسی کنید.",
             "بازده اوراق آلمان و سایر کشورهای اصلی منطقه یورو: آیا انتظارات نرخ تغییر کرده است؟",
@@ -58,7 +58,9 @@ INDICATORS = [
     ("UK CPI / Core CPI", ("uk cpi", "u.k. cpi", "britain cpi", "british cpi", "uk consumer price", "uk inflation"), "inflation", False, "تورم مصرف‌کننده بریتانیا"),
     ("BoE Rate / MPC", ("bank of england rate", "boe rate", "bank rate", "monetary policy committee"), "policy", False, "نرخ و سیاست پولی بانک مرکزی انگلستان"),
     ("UK GDP", ("uk gdp", "u.k. gdp", "britain gdp", "uk gross domestic product"), "growth", False, "تولید ناخالص داخلی بریتانیا"),
-    ("UK Labour Market", ("uk unemployment", "uk employment", "uk payroll", "uk wages", "average earnings uk"), "employment", True, "بازار کار و دستمزد بریتانیا"),
+    ("UK Unemployment", ("uk unemployment", "uk jobless rate", "unemployment rate uk"), "employment", True, "نرخ بیکاری بریتانیا"),
+    ("UK Employment", ("uk employment", "uk payroll", "uk jobs report"), "employment", False, "اشتغال بریتانیا"),
+    ("UK Wages", ("uk wages", "average earnings uk", "uk wage growth"), "employment", False, "رشد دستمزد بریتانیا"),
     ("UK Retail Sales", ("uk retail sales", "britain retail sales"), "growth", False, "خرده‌فروشی بریتانیا"),
     ("UK PMI", ("uk pmi", "britain pmi", "s&p global uk pmi"), "growth", False, "شاخص مدیران خرید بریتانیا"),
     ("Japan CPI / Core CPI", ("japan cpi", "japanese cpi", "tokyo cpi", "japan inflation"), "inflation", False, "تورم مصرف‌کننده ژاپن"),
