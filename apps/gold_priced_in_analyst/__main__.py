@@ -112,6 +112,55 @@ def verify_channel_admin():
             "Priced-In Analyst bot is not an administrator in the target channel. "
             "Promote this bot to channel admin, then retry."
         )
+    if not member.get("can_pin_messages", False):
+        raise RuntimeError(
+            "Priced-In Analyst bot is an admin but lacks can_pin_messages permission. "
+            "Enable the channel permission to pin messages for this bot."
+        )
+
+
+def pin_channel_message(message_id):
+    telegram("pinChatMessage", {
+        "chat_id": CHAT_ID,
+        "message_id": int(message_id),
+        "disable_notification": True,
+    })
+
+
+def send_chart_photo(chart_path, caption, reply_to_message_id):
+    for attempt in range(4):
+        with open(chart_path, "rb") as photo:
+            response = requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
+                data={
+                    "chat_id": CHAT_ID,
+                    "reply_to_message_id": int(reply_to_message_id),
+                    "caption": escape(caption),
+                    "parse_mode": "HTML",
+                },
+                files={"photo": photo},
+                timeout=60,
+            )
+        try:
+            data = response.json()
+        except ValueError:
+            response.raise_for_status()
+            raise RuntimeError("Telegram sendPhoto returned invalid JSON.")
+
+        if response.status_code == 429 or data.get("error_code") == 429:
+            retry_after = int((data.get("parameters") or {}).get("retry_after", 2))
+            if attempt == 3:
+                raise RuntimeError(f"Telegram sendPhoto rate limited after retries; retry_after={retry_after}s.")
+            wait_seconds = min(max(retry_after + 1, 2), 60)
+            print(f"Telegram rate limit on sendPhoto; waiting {wait_seconds}s before retry.")
+            time.sleep(wait_seconds)
+            continue
+
+        response.raise_for_status()
+        if not data.get("ok"):
+            raise RuntimeError(data.get("description", "Telegram sendPhoto failed"))
+        return data["result"]
+    raise RuntimeError("Telegram sendPhoto failed after retry attempts.")
 
 
 def process_update(update):
@@ -125,6 +174,8 @@ def process_update(update):
     text = message.get("text") or message.get("caption") or ""
     fields = extract_fields(text)
     analysis, chart_symbol, event_dt = analyze_report(kind, text, fields)
+
+    # Pin the written analysis first so it remains available even if chart delivery fails.
     reply = telegram("sendMessage", {
         "chat_id": CHAT_ID,
         "text": analysis,
@@ -133,21 +184,21 @@ def process_update(update):
         "reply_to_message_id": msg_id,
         "allow_sending_without_reply": True,
     })
+    pin_channel_message(reply["message_id"])
+    print(f"Pinned Priced-In analysis message {reply['message_id']}.")
+
+    chart_path = None
     try:
         chart_path, chart_note = make_chart(chart_symbol, event_dt, kind)
-        with open(chart_path, "rb") as photo:
-            response = requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendPhoto",
-                data={"chat_id": CHAT_ID, "reply_to_message_id": msg_id,
-                      "caption": escape(chart_note), "parse_mode": "HTML"},
-                files={"photo": photo}, timeout=45,
-            )
-            response.raise_for_status()
-            result = response.json()
-            if not result.get("ok"):
-                raise RuntimeError(result.get("description", "sendPhoto failed"))
+        chart_message = send_chart_photo(chart_path, chart_note, msg_id)
+        pin_channel_message(chart_message["message_id"])
+        print(f"Sent and pinned chart message {chart_message['message_id']} for report {msg_id}.")
     except Exception as exc:
-        print(f"Chart delivery unavailable for message {msg_id}: {type(exc).__name__}: {exc}")
+        print(f"Chart delivery/pinning failed for report {msg_id}: {type(exc).__name__}: {exc}")
+        raise
+    finally:
+        if chart_path:
+            Path(chart_path).unlink(missing_ok=True)
     return True
 
 
