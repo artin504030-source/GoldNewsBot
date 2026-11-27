@@ -112,7 +112,7 @@ def expected_gold_direction(event_name, forecast, previous):
 
 
 def classify_pre(points, event_dt, forecast, previous, event_name, cross_market=None):
-    """Assess only the 12 hours leading up to the event; never use post-release bars."""
+    """Describe pre-release price action without pretending forecast-vs-previous proves pricing-in."""
     if event_dt is None:
         return "اطلاعات کافی برای تشخیص وجود ندارد", "زمان دقیق رویداد در پیام موجود نیست؛ بازه پیش از انتشار قابل تعیین نیست."
     now = datetime.now(timezone.utc)
@@ -133,35 +133,20 @@ def classify_pre(points, event_dt, forecast, previous, event_name, cross_market=
     if end_t - start_t < timedelta(hours=6):
         return "اطلاعات کافی برای تشخیص وجود ندارد", "پوشش زمانی کندل‌های پیش از رویداد کمتر از ۶ ساعت است."
     change = (end_p / start_p - 1) * 100
-    expected = expected_gold_direction(event_name, forecast, previous)
-    if expected is None:
-        return "اطلاعات کافی برای تشخیص وجود ندارد", (
-            f"تغییر طلا در بازه پیش از انتشار {change:+.2f}% بوده؛ اما از نوع شاخص و ارقام پیش‌بینی/قبلی "
-            "جهت مورد انتظار قابل استنتاج مطمئن نیست."
-        )
-    aligned = (change < 0 and expected == "down") or (change > 0 and expected == "up")
     dxy = _change((cross_market or {}).get("DXY"), start_t, end_t)
     us10y = _change((cross_market or {}).get("US10Y"), start_t, end_t)
-    cross_agrees = dxy is not None and us10y is not None and (
-        (expected == "up" and dxy < 0 and us10y < 0) or
-        (expected == "down" and dxy > 0 and us10y > 0)
-    )
     cross_note = "؛ ".join(_cross_market_lines(cross_market, start_t, end_t))
     if abs(change) < 0.20:
-        return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", (
-            f"تغییر طلا در بازه پیش از انتشار {change:+.2f}% بوده و حرکت هم‌جهت معناداری دیده نمی‌شود؛ "
-            "این به‌تنهایی نبود پیش‌خورشدن را ثابت نمی‌کند. " + cross_note
+        return "حرکت قابل‌توجهی پیش از انتشار ثبت نشد؛ پیش‌خورشدن نامشخص", (
+            f"تغییر GC=F در بازه پیش از انتشار {change:+.2f}% بود. نبود حرکت قابل‌توجه، "
+            "ثابت نمی‌کند رویداد پیش‌خور نشده است. " + cross_note
         )
-    if aligned:
-        return "تا حدی پیش‌خور شده؛ شواهد محدود", (
-            f"تغییر طلا فقط در بازه پیش از انتشار {change:+.2f}% و هم‌جهت با اثر معمول مورد انتظار بوده است. "
-            f"داده بین‌بازاری در همان بازه: {cross_note}. " +
-            ("دلار و بازده نیز هم‌جهت‌اند؛ شواهد چندبازاری قوی‌تر است، اما اثبات قطعی نیست."
-             if cross_agrees else "تأیید هم‌زمان دلار و بازده کامل نیست؛ اطمینان محدود باقی می‌ماند.")
-        )
-    return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", (
-        f"تغییر طلا در بازه پیش از انتشار {change:+.2f}% با جهت معمول مورد انتظار هم‌راستا نیست. "
-        f"داده بین‌بازاری در همان بازه: {cross_note}. این نتیجه نبود پیش‌خورشدن را اثبات نمی‌کند."
+    return "حرکت پیش از انتشار مشاهده شد؛ انتساب به رویداد اثبات نشده", (
+        f"تغییر GC=F در ۱۲ ساعت منتهی به زمان فعلی/رویداد {change:+.2f}% بود. "
+        "این فقط حرکت مشاهده‌شده قیمت است؛ مقایسه پیش‌بینی با عدد قبلی، غافلگیری نسبت به اجماع بازار را نشان نمی‌دهد "
+        "و به‌تنهایی نمی‌توان گفت همین رویداد پیش‌خور شده است. "
+        f"داده‌های بین‌بازاری در همان بازه: {cross_note}. برای تشخیص قوی‌تر، انتظارات بازار/نرخ‌های ضمنی "
+        "و چند ناشر مستقل لازم است."
     )
 def classify_post(points, event_dt, actual, forecast, cross_market=None):
     if not event_dt:
