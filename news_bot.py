@@ -51,6 +51,10 @@ FEEDS = {
     "BEA": "https://apps.bea.gov/rss/rss.xml",
     "Google News — US Official Economic Releases": "https://news.google.com/rss/search?q=(site%3Abls.gov+OR+site%3Abea.gov+OR+site%3Afederalreserve.gov)+CPI+OR+PCE+OR+GDP+OR+employment+OR+retail+sales+OR+interest+rates&hl=en-US&gl=US&ceid=US:en",
     "Google News — US Economic Expectations": "https://news.google.com/rss/search?q=US+economic+data+forecast+expectations+analysts+CPI+PCE+NFP+GDP+retail+sales+Federal+Reserve&hl=en-US&gl=US&ceid=US:en",
+    "Google News — Europe Official Economic Releases": "https://news.google.com/rss/search?q=(site%3Aecb.europa.eu+OR+site%3Aec.europa.eu%2Feurostat+OR+site%3Aons.gov.uk+OR+site%3Abankofengland.co.uk)+HICP+OR+CPI+OR+GDP+OR+PMI+OR+employment+OR+interest+rates&hl=en&gl=GB&ceid=GB:en",
+    "Google News — Europe Economic Expectations": "https://news.google.com/rss/search?q=Eurozone+UK+economic+data+forecast+expectations+analysts+HICP+CPI+GDP+PMI+ECB+BoE&hl=en&gl=GB&ceid=GB:en",
+    "Google News — Asia Official Economic Releases": "https://news.google.com/rss/search?q=(site%3Aboj.or.jp+OR+site%3Astat.go.jp+OR+site%3Apbc.gov.cn+OR+site%3Astats.gov.cn+OR+site%3Ameti.go.jp)+CPI+OR+GDP+OR+PMI+OR+employment+OR+interest+rates+OR+trade&hl=en&gl=SG&ceid=SG:en",
+    "Google News — Asia Economic Expectations": "https://news.google.com/rss/search?q=Japan+China+Asia+economic+data+forecast+expectations+analysts+CPI+GDP+PMI+BOJ+PBOC&hl=en&gl=SG&ceid=SG:en",
     "European Central Bank": "https://www.ecb.europa.eu/rss/press.html",
     "Eurostat": "https://ec.europa.eu/eurostat/cache/RSS/rss_estat_news.xml",
     "Bank of England": "https://www.bankofengland.co.uk/rss/news",
@@ -73,11 +77,19 @@ SOURCE_DISPLAY_NAMES = {
     "BEA": "BEA — اداره تحلیل اقتصادی آمریکا",
     "Google News — US Official Economic Releases": "Google News — اخبار منتشرشده از منابع رسمی آمریکا",
     "Google News — US Economic Expectations": "Google News — انتظارات و پیش‌بینی‌های اقتصادی آمریکا",
+    "European Central Bank": "بانک مرکزی اروپا (ECB) — منبع رسمی",
+    "Eurostat": "یورواستات — اداره آمار اتحادیه اروپا",
+    "Bank of England": "بانک مرکزی انگلستان (BoE) — منبع رسمی",
+    "Bank of Japan": "بانک مرکزی ژاپن (BoJ) — منبع رسمی",
+    "Google News — Europe Official Economic Releases": "Google News — گزارش‌های رسمی اقتصادی اروپا و بریتانیا",
+    "Google News — Europe Economic Expectations": "Google News — انتظارات و پیش‌بینی‌های اقتصادی اروپا و بریتانیا",
+    "Google News — Asia Official Economic Releases": "Google News — گزارش‌های رسمی اقتصادی ژاپن و چین",
+    "Google News — Asia Economic Expectations": "Google News — انتظارات و پیش‌بینی‌های اقتصادی آسیا",
 }
 
 BREAKING_FEEDS = {
     name: url for name, url in FEEDS.items()
-    if name in {"Federal Reserve", "BLS", "BEA", "European Central Bank", "Bank of England", "Bank of Japan", "Geopolitical News", "Conflict and Security", "Oil Trade and Supply", "Energy Shipping Routes", "Trade and Sanctions", "Economic Reports"}
+    if name in {"Federal Reserve", "BLS", "BEA", "European Central Bank", "Eurostat", "Bank of England", "Bank of Japan", "Google News — Europe Official Economic Releases", "Google News — Asia Official Economic Releases", "Geopolitical News", "Conflict and Security", "Oil Trade and Supply", "Energy Shipping Routes", "Trade and Sanctions", "Economic Reports"}
 }
 
 EXCLUDE_TERMS = [
