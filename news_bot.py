@@ -49,6 +49,8 @@ FEEDS = {
     "Federal Reserve": "https://www.federalreserve.gov/feeds/press_all.xml",
     "BLS": "https://www.bls.gov/feed/bls_latest.rss",
     "BEA": "https://apps.bea.gov/rss/rss.xml",
+    "Google News — US Official Economic Releases": "https://news.google.com/rss/search?q=(site%3Abls.gov+OR+site%3Abea.gov+OR+site%3Afederalreserve.gov)+CPI+OR+PCE+OR+GDP+OR+employment+OR+retail+sales+OR+interest+rates&hl=en-US&gl=US&ceid=US:en",
+    "Google News — US Economic Expectations": "https://news.google.com/rss/search?q=US+economic+data+forecast+expectations+analysts+CPI+PCE+NFP+GDP+retail+sales+Federal+Reserve&hl=en-US&gl=US&ceid=US:en",
     "European Central Bank": "https://www.ecb.europa.eu/rss/press.html",
     "Eurostat": "https://ec.europa.eu/eurostat/cache/RSS/rss_estat_news.xml",
     "Bank of England": "https://www.bankofengland.co.uk/rss/news",
@@ -63,6 +65,14 @@ FEEDS = {
     "Conflict and Security": "https://news.google.com/rss/search?q=war+OR+military+attack+OR+airstrike+OR+missile+OR+invasion+OR+ceasefire+OR+peace+talks+OR+geopolitical+crisis+OR+sanctions&hl=en-US&gl=US&ceid=US:en",
     "Trade and Sanctions": "https://news.google.com/rss/search?q=trade+sanctions+OR+oil+sanctions+OR+export+ban+OR+import+restrictions+OR+tariffs+OR+trade+embargo+OR+shipping+restrictions&hl=en-US&gl=US&ceid=US:en",
     "China and Global Markets": "https://news.google.com/rss/search?q=China+economy+OR+Asian+markets+OR+Wall+Street+OR+stock+markets+OR+global+economy&hl=en-US&gl=US&ceid=US:en",
+}
+
+SOURCE_DISPLAY_NAMES = {
+    "Federal Reserve": "Federal Reserve (فدرال رزرو آمریکا)",
+    "BLS": "BLS — اداره آمار کار آمریکا",
+    "BEA": "BEA — اداره تحلیل اقتصادی آمریکا",
+    "Google News — US Official Economic Releases": "Google News — اخبار منتشرشده از منابع رسمی آمریکا",
+    "Google News — US Economic Expectations": "Google News — انتظارات و پیش‌بینی‌های اقتصادی آمریکا",
 }
 
 BREAKING_FEEDS = {
@@ -448,7 +458,8 @@ def make_message(source, entry):
     body_lines.extend([
         persian_article,
         "",
-        f"🏛 منبع: {publisher_name}",
+        f"🏛 منبع خبر: {publisher_name}",
+        f"📡 منبع دریافت: {SOURCE_DISPLAY_NAMES.get(source, source)}",
     ])
     if publisher_link:
         body_lines.append(f"🔗 لینک منبع: {publisher_link}")
