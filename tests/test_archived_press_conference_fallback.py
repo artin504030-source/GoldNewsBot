@@ -15,7 +15,7 @@ class ArchivedPressConferenceFallbackTests(unittest.TestCase):
         item = self.item()
         result = analyst.fetch_article(item, enabled=True)
         self.assertEqual(result["status"], "archived_transcript_fallback")
-        self.assertEqual(result["body"], item["summary"][:24000])
+        self.assertEqual(result["body"], item["summary"].strip()[:24000])
         self.assertIn("آرشیو", result["error"])
 
     @patch("goldnewsbot.pipeline_preview.extract_text", return_value="too short")
