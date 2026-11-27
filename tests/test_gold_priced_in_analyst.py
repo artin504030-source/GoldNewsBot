@@ -49,14 +49,23 @@ class TargetFilterTests(unittest.TestCase):
             finally:
                 module.STATE_PATH = old_path
 
-    def test_verify_channel_admin_requires_pin_permission(self):
+    def test_verify_channel_admin_warns_but_allows_delivery_without_pin_permission(self):
         import apps.gold_priced_in_analyst.__main__ as module
         with patch.object(module, "telegram", side_effect=[
             {"id": 123},
             {"status": "administrator", "can_pin_messages": False},
-        ]):
-            with self.assertRaisesRegex(RuntimeError, "can_pin_messages"):
-                verify_channel_admin()
+        ]), patch("builtins.print") as log:
+            verify_channel_admin()
+            self.assertTrue(any("lacks can_pin_messages" in str(call) for call in log.call_args_list))
+
+    def test_pin_failure_does_not_interrupt_delivery(self):
+        import apps.gold_priced_in_analyst.__main__ as module
+        with (
+            patch.object(module, "telegram", side_effect=RuntimeError("not enough rights")),
+            patch("builtins.print") as log,
+        ):
+            self.assertFalse(module.pin_channel_message(321))
+            self.assertTrue(any("Could not silently pin" in str(call) for call in log.call_args_list))
 
     def test_process_update_pins_analysis_and_chart(self):
         import apps.gold_priced_in_analyst.__main__ as module

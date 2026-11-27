@@ -17,21 +17,55 @@ CHANNEL_ID = os.getenv("CHANNEL_ID")
 REPORT_FILE = BASE / "daily_report.json"
 
 
+def split_message(message, limit=3800):
+    """Split plain-text Telegram messages below Telegram's 4096-character limit."""
+    chunks = []
+    current = ""
+    for line in (message or "").splitlines():
+        while len(line) > limit:
+            if current:
+                chunks.append(current)
+                current = ""
+            chunks.append(line[:limit])
+            line = line[limit:]
+        candidate = line if not current else current + "\n" + line
+        if len(candidate) > limit:
+            if current:
+                chunks.append(current)
+            current = line
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    return chunks or [" " ]
+
+
 def send(message):
     if os.getenv("DRY_RUN", "false").lower() == "true":
         print("[DRY RUN] Daily digest preview (not sent):\n" + message)
         return
     if not TOKEN or not CHANNEL_ID:
         raise SystemExit("Telegram settings missing")
-    response = requests.post(
-        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-        data={"chat_id": CHANNEL_ID, "text": message, "disable_web_page_preview": True},
-        timeout=25,
-    )
-    response.raise_for_status()
-    result = response.json()
-    if not result.get("ok"):
-        raise RuntimeError(str(result))
+    chunks = split_message(message)
+    print(f"Sending daily digest in {len(chunks)} Telegram message(s).")
+    for index, chunk in enumerate(chunks, start=1):
+        response = requests.post(
+            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+            data={"chat_id": CHANNEL_ID, "text": chunk, "disable_web_page_preview": True},
+            timeout=25,
+        )
+        try:
+            result = response.json()
+        except ValueError:
+            response.raise_for_status()
+            raise RuntimeError("Telegram returned a non-JSON response.")
+        if not response.ok or not result.get("ok"):
+            description = result.get("description", "unknown Telegram error")
+            raise RuntimeError(
+                f"Telegram sendMessage failed for digest part {index}/{len(chunks)} "
+                f"(HTTP {response.status_code}): {description}"
+            )
+        print(f"Sent digest part {index}/{len(chunks)} (message_id={result.get('result', {}).get('message_id')}).")
 
 
 def recent_archive_items(now):

@@ -14,9 +14,14 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("ALERT_CHAT_ID") or os.getenv("CHANNEL_ID")
 API = f"https://api.github.com/repos/{OWNER}/{REPO}"
 WORKFLOWS = {
-    "Gold News Breaking Monitor": {"file": "breaking_news.yml", "interval": 5, "stale": 20},
-    "Gold News Bot": {"file": "news.yml", "interval": 15, "stale": 45},
-    "Gold News Daily Digest": {"file": "daily_digest.yml", "interval": 1440, "stale": 1560},
+    "Gold News Breaking Monitor": {"file": "breaking_news.yml", "interval": 5, "stale": 20, "events": {"schedule", "workflow_dispatch"}},
+    "Gold News Bot": {"file": "news.yml", "interval": 15, "stale": 45, "events": {"schedule", "workflow_dispatch"}},
+    "Gold News Daily Digest": {"file": "daily_digest.yml", "interval": 1440, "stale": 1560, "events": {"schedule", "workflow_dispatch"}},
+    "Gold Prices Bot": {"file": "gold_prices.yml", "interval": 30, "stale": 90, "events": {"schedule", "workflow_dispatch"}},
+    "Gold Market Telegram Delivery": {"file": "gold_market_telegram.yml", "interval": 60, "stale": 150, "events": {"workflow_dispatch"}},
+    "Gold News Analyst": {"file": "gold_news_analyst.yml", "interval": 15, "stale": 60, "events": {"workflow_run"}},
+    "Gold Reports Bot": {"file": "gold_reports.yml", "interval": 10, "stale": 40, "events": {"schedule", "workflow_dispatch"}},
+    "Gold Priced-In Analyst": {"file": "gold_priced_in_analyst.yml", "interval": 5, "stale": 25, "events": {"schedule", "workflow_run", "workflow_dispatch"}},
 }
 
 
@@ -75,6 +80,13 @@ def clear_alert(state, key, recovery_message):
     return False
 
 
+def workflow_file_to_name(workflow_file):
+    for name, config in WORKFLOWS.items():
+        if config["file"] == workflow_file:
+            return name
+    raise KeyError(f"Unknown monitored workflow file: {workflow_file}")
+
+
 def get_scheduled_runs(workflow_file):
     if not GITHUB_TOKEN:
         raise RuntimeError("GITHUB_TOKEN is missing")
@@ -88,7 +100,7 @@ def get_scheduled_runs(workflow_file):
     runs = response.json().get("workflow_runs", [])
     # External cron-job.org dispatches workflows via workflow_dispatch. Include
     # those alongside native GitHub schedules so watchdogs see real automated runs.
-    automated_events = {"schedule", "workflow_dispatch"}
+    automated_events = WORKFLOWS[workflow_file_to_name(workflow_file)]["events"]
     scheduled = [run for run in runs if run.get("event") in automated_events and run.get("head_branch") == "main"]
     scheduled.sort(key=lambda item: item.get("created_at") or "", reverse=True)
     return scheduled

@@ -113,18 +113,23 @@ def verify_channel_admin():
             "Promote this bot to channel admin, then retry."
         )
     if not member.get("can_pin_messages", False):
-        raise RuntimeError(
-            "Priced-In Analyst bot is an admin but lacks can_pin_messages permission. "
-            "Enable the channel permission to pin messages for this bot."
+        print(
+            "WARNING: Priced-In Analyst bot lacks can_pin_messages permission. "
+            "Analysis and chart will still be delivered; pinning will be attempted and may fail."
         )
 
 
 def pin_channel_message(message_id):
-    telegram("pinChatMessage", {
-        "chat_id": CHAT_ID,
-        "message_id": int(message_id),
-        "disable_notification": True,
-    })
+    try:
+        telegram("pinChatMessage", {
+            "chat_id": CHAT_ID,
+            "message_id": int(message_id),
+            "disable_notification": True,
+        })
+        return True
+    except Exception as exc:
+        print(f"WARNING: Could not silently pin Telegram message {message_id}: {type(exc).__name__}: {exc}")
+        return False
 
 
 def send_chart_photo(chart_path, caption, reply_to_message_id):
@@ -184,15 +189,19 @@ def process_update(update):
         "reply_to_message_id": msg_id,
         "allow_sending_without_reply": True,
     })
-    pin_channel_message(reply["message_id"])
-    print(f"Pinned Priced-In analysis message {reply['message_id']}.")
+    analysis_pinned = pin_channel_message(reply["message_id"])
+    if analysis_pinned:
+        print(f"Pinned Priced-In analysis message {reply['message_id']}.")
 
     chart_path = None
     try:
         chart_path, chart_note = make_chart(chart_symbol, event_dt, kind)
         chart_message = send_chart_photo(chart_path, chart_note, msg_id)
-        pin_channel_message(chart_message["message_id"])
-        print(f"Sent and pinned chart message {chart_message['message_id']} for report {msg_id}.")
+        chart_pinned = pin_channel_message(chart_message["message_id"])
+        print(
+            f"Sent chart message {chart_message['message_id']} for report {msg_id}; "
+            f"silently_pinned={chart_pinned}."
+        )
     except Exception as exc:
         print(f"Chart delivery/pinning failed for report {msg_id}: {type(exc).__name__}: {exc}")
         raise
