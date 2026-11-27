@@ -66,7 +66,10 @@ def canonical_url(url):
         p = urlsplit(url.strip())
         query = [(k, v) for k, v in parse_qsl(p.query, keep_blank_values=True)
                  if not k.lower().startswith("utm_") and k.lower() not in {"fbclid", "gclid", "ocid", "cmpid"}]
-        return urlunsplit((p.scheme.lower(), p.netloc.lower(), p.path.rstrip("/"), urlencode(query), ""))
+        host = (p.hostname or "").lower().removeprefix("www.")
+        if p.port and p.port not in (80, 443):
+            host = f"{host}:{p.port}"
+        return urlunsplit((p.scheme.lower(), host, p.path.rstrip("/"), urlencode(query), ""))
     except Exception:
         return url.strip()
 
@@ -88,17 +91,49 @@ def save_archive(items):
     temp.replace(ARCHIVE_FILE)
 
 
-def is_duplicate(title, link, archive):
+def _normal_title(title):
+    return re.sub(r"[^a-z0-9\u0600-\u06ff]+", " ", str(title or "").casefold()).strip()
+
+
+def _within_duplicate_window(left, right, hours=72):
+    try:
+        a = datetime.fromisoformat(str(left).replace("Z", "+00:00"))
+        b = datetime.fromisoformat(str(right).replace("Z", "+00:00"))
+        if a.tzinfo is None: a = a.replace(tzinfo=timezone.utc)
+        if b.tzinfo is None: b = b.replace(tzinfo=timezone.utc)
+        return abs((a.astimezone(timezone.utc) - b.astimezone(timezone.utc)).total_seconds()) <= hours * 3600
+    except (TypeError, ValueError):
+        return False
+
+
+def is_duplicate(title, link, archive, published=None):
+    """Exact canonical URLs always match; fuzzy headlines only match within 72h."""
     key = canonical_url(link)
-    normalized = re.sub(r"[^a-z0-9\u0600-\u06ff]+", " ", title.lower()).strip()
+    normalized = _normal_title(title)
     for item in archive[-500:]:
         old_link = canonical_url(item.get("link", ""))
         if key and old_link and key == old_link:
             return True
-        old_title = re.sub(r"[^a-z0-9\u0600-\u06ff]+", " ", item.get("title", "").lower()).strip()
-        if normalized and old_title and SequenceMatcher(None, normalized, old_title).ratio() >= 0.91:
+        old_title = _normal_title(item.get("title", ""))
+        if (normalized and old_title
+                and SequenceMatcher(None, normalized, old_title).ratio() >= 0.94
+                and published and _within_duplicate_window(published, item.get("published_utc"))):
             return True
     return False
+
+
+def classify_claim_status(title, summary=""):
+    """Flag explicit uncertainty language; never infer independent verification."""
+    text = (str(title or "") + " " + str(summary or "")).casefold()
+    uncertain = (
+        "unconfirmed", "unverified", "alleged", "allegedly", "reportedly",
+        "rumor", "rumour", "claims that", "claim that", "sources say",
+        "according to reports", "not confirmed", "هنوز تأیید نشده",
+        "تأییدنشده", "ادعای", "گفته می‌شود", "گزارش‌های تأییدنشده",
+    )
+    if any(term in text for term in uncertain):
+        return "گزارش اولیه/ادعای تأییدنشده؛ نیازمند تأیید مستقل"
+    return "تأیید مستقل در آرشیو احراز نشده"
 
 
 def source_status(source):
@@ -107,22 +142,23 @@ def source_status(source):
     return "منبع رسمی" if any(term in name for term in official) else "منبع رسانه‌ای/تجمیع‌گر؛ نیازمند بررسی منبع اصلی"
 
 
-def _matching_archive_item(title, link, items):
+def _matching_archive_item(title, link, items, published=None):
     key = canonical_url(link)
-    normalized = re.sub(r"[^a-z0-9\u0600-\u06ff]+", " ", title.lower()).strip()
+    normalized = _normal_title(title)
     for item in reversed(items[-500:]):
         old_link = canonical_url(item.get("link", ""))
         if key and old_link and key == old_link:
             return item
-        old_title = re.sub(r"[^a-z0-9\u0600-\u06ff]+", " ", item.get("title", "").lower()).strip()
-        if normalized and old_title and SequenceMatcher(None, normalized, old_title).ratio() >= 0.91:
+        old_title = _normal_title(item.get("title", ""))
+        if (normalized and old_title and SequenceMatcher(None, normalized, old_title).ratio() >= 0.94
+                and published and _within_duplicate_window(published, item.get("published_utc"))):
             return item
     return None
 
 
-def record_source_confirmation(source, title, link):
+def record_source_confirmation(source, title, link, published=None):
     items = load_archive()
-    match = _matching_archive_item(title, link, items)
+    match = _matching_archive_item(title, link, items, published)
     if not match:
         return 0
     sources = match.get("confirmed_sources") or [match.get("source", "نامشخص")]
@@ -130,7 +166,7 @@ def record_source_confirmation(source, title, link):
         sources.append(source)
     match["confirmed_sources"] = sources
     match["source_count"] = len(sources)
-    match["confirmation_status"] = "تأیید چند منبع" if len(sources) >= 2 else "یک منبع ثبت‌شده"
+    match["confirmation_status"] = "چند فید ثبت‌شده؛ تأیید مستقل احراز نشده" if len(sources) >= 2 else "یک فید ثبت‌شده؛ نه تأیید مستقل"
     match["last_confirmation_utc"] = datetime.now(timezone.utc).isoformat()
     save_archive(items)
     return len(sources)
@@ -140,7 +176,7 @@ def archive_news(source, title, summary, link, published, importance, telegram_m
     analysis = analyse_news(title, summary)
     items = load_archive()
     items.append({
-        "source": source, "source_status": source_status(source), "confirmed_sources": [source], "source_count": 1, "confirmation_status": "یک منبع ثبت‌شده", "title": title, "summary": summary[:30000], "link": link,
+        "source": source, "source_status": source_status(source), "claim_status": classify_claim_status(title, summary), "independent_verification": "احراز نشده", "confirmed_sources": [source], "source_count": 1, "confirmation_status": "یک فید ثبت‌شده؛ نه تأیید مستقل", "title": title, "summary": summary[:30000], "link": link,
         "published_utc": published, "published_kabul": kabul_time(published),
         "importance": importance, "relevance_score": analysis["score"],
         "relevance": analysis["label"], "category": analysis["category"],

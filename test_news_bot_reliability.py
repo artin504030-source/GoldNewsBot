@@ -4,6 +4,7 @@ os.environ.setdefault('BOT_TOKEN','unit-test-token');os.environ.setdefault('CHAN
 sys.path.insert(0,os.path.dirname(__file__))
 if 'feedparser' not in sys.modules: sys.modules['feedparser']=types.SimpleNamespace(parse=lambda data:types.SimpleNamespace(entries=[]))
 import news_bot
+from gold_news_features import is_duplicate, canonical_url, classify_claim_status
 class ReliabilityTests(unittest.TestCase):
  def test_feed_retries_503(self):
   a=Mock(status_code=503,headers={});b=Mock(status_code=200,content=b'rss')
@@ -45,5 +46,22 @@ class ReliabilityTests(unittest.TestCase):
   from cross_market_impact import analyze_cross_market_impact
   result=analyze_cross_market_impact('New oil export ban and trade sanctions announced')
   self.assertIn('trade_sanctions',result['categories']);self.assertIn('UKOIL',result['symbols'])
+
+
+ def test_canonical_url_ignores_tracking_and_www(self):
+  self.assertEqual(canonical_url('https://www.example.com/story/?utm_source=x&gclid=abc'), 'https://example.com/story')
+
+ def test_fuzzy_duplicate_requires_close_publication_time(self):
+  old = {'title':'Federal Reserve holds interest rates steady','link':'https://one.example/a','published_utc':'2026-11-20T10:00:00+00:00'}
+  self.assertTrue(is_duplicate(old['title'], 'https://two.example/b', [old], '2026-11-21T10:00:00+00:00'))
+  self.assertFalse(is_duplicate(old['title'], 'https://two.example/b', [old], '2026-11-25T10:00:00+00:00'))
+
+ def test_exact_canonical_url_deduplicates_even_when_updated(self):
+  old = {'title':'Initial headline','link':'https://www.example.com/story?utm_campaign=x'}
+  self.assertTrue(is_duplicate('Updated headline with new details', 'https://example.com/story', [old]))
+
+ def test_uncertain_claim_language_is_flagged_without_claiming_fact_check(self):
+  self.assertIn('تأییدنشده', classify_claim_status('Unconfirmed reports of an emergency rate cut'))
+  self.assertIn('احراز نشده', classify_claim_status('Federal Reserve publishes minutes'))
 
 if __name__=='__main__':unittest.main()
