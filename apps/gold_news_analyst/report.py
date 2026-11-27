@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 import requests
 from .engine import analyse, parse_time
+from .us_macro import render_us_macro_section
 
 KABUL = ZoneInfo("Asia/Kabul")
 
@@ -81,6 +82,7 @@ def render(item, article=None, market_snapshot=None):
         f"اطمینان: {escape(a['confidence'])}",
         "شرط بازبینی: " + escape(a["invalidate"]),
     ]
+    lines += render_us_macro_section(item, article.get("body", ""))
     lines += ["", "<b>نمادهای مرتبط و اثر احتمالی</b>"]
     if a.get("symbol_impacts"):
         for impact in a["symbol_impacts"]:
