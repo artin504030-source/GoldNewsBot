@@ -11,7 +11,7 @@ class DailyDigestSplitTests(unittest.TestCase):
         chunks = split_message(message, limit=2500)
         self.assertGreater(len(chunks), 1)
         self.assertTrue(all(len(chunk) <= 2500 for chunk in chunks))
-        self.assertEqual("".join(chunks).replace("x", ""), "")
+        self.assertEqual(sum(chunk.count("x") for chunk in chunks), 10000)
 
     def test_splits_single_oversized_line(self):
         chunks = split_message("a" * 5000, limit=2000)
