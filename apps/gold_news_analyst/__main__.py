@@ -69,7 +69,7 @@ def fetch_article(item, enabled=True, session=None):
         if item.get("content_type") == "economic_press_conference_transcript" and len(archived) >= 300:
             result["body"] = archived[:24000]
             result["status"] = "archived_transcript_fallback"
-            result["error"] = "دریافت مجدد از ناشر ناموفق بود؛ تحلیل از متن نشست ذخیره‌شده توسط Gold News انجام شد"
+            result["error"] = "دریافت مجدد از ناشر ناموفق بود؛ تحلیل از متن نشست ذخیره‌شده در آرشیو Gold News انجام شد"
         else:
             result["status"] = "failed"
             result["error"] = f"دریافت/تبدیل لینک خبر ناموفق بود: {type(exc).__name__}: {str(exc)[:160]}"
