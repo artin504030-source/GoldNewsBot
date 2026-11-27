@@ -298,7 +298,10 @@ def analyst_bias(event, articles):
     from urllib.parse import urlparse
     votes = {}
     for article in articles or []:
-        domain = (urlparse(article.get("link", "")).netloc or article.get("source", "")).lower()
+        host = urlparse(article.get("link", "")).netloc.lower().removeprefix("www.")
+        publisher = (article.get("source", "") or "").strip().lower()
+        # Google News RSS links share one host; use the publisher label in that case.
+        domain = publisher if host.endswith("news.google.com") else (host or publisher)
         domain = domain.removeprefix("www.")
         if not domain or domain in votes:
             continue
