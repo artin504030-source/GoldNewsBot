@@ -89,6 +89,17 @@ class AnalystTests(unittest.TestCase):
         self.assertIn("UKOIL", impacts)
         self.assertIn("XNGUSD", impacts)
 
+    def test_unemployment_rate_surprise_is_inverted_for_currency_bias(self):
+        result = analyse(self.item("US unemployment above expectations"))
+        impacts = {x["symbol"]: x for x in result["symbol_impacts"]}
+        self.assertEqual(impacts["EURUSD"]["impact"], "صعودی بالقوه")
+        self.assertEqual(impacts["USDJPY"]["impact"], "نزولی بالقوه")
+
+    def test_keyword_matching_does_not_match_oil_inside_boiling(self):
+        result = analyse(self.item("Boiling point research update"))
+        self.assertNotIn("نفت و انرژی", result["events"])
+        self.assertNotIn("USOIL", {x["symbol"] for x in result["symbol_impacts"]})
+
     def test_gold_relevance_filter_is_disabled_for_all_news(self):
         item = self.item("Regional manufacturing update", relevance_score=0)
         self.assertTrue(eligible(item, datetime.now(timezone.utc), min_relevance=0))

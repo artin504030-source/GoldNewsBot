@@ -81,7 +81,10 @@ def get_cross_market_bars(session=None):
 
 
 def _change(points, start, end):
-    rows = [(t, p) for t, p in (points or []) if start <= t <= end]
+    rows = sorted(
+        [(t, p) for t, p in (points or []) if start <= t <= end and p is not None and p > 0],
+        key=lambda row: row[0],
+    )
     if len(rows) < 2 or rows[0][1] == 0:
         return None
     return (rows[-1][1] / rows[0][1] - 1) * 100
@@ -109,41 +112,42 @@ def expected_gold_direction(event_name, forecast, previous):
 
 
 def classify_pre(points, event_dt, forecast, previous, event_name, cross_market=None):
+    """Describe pre-release price action without pretending forecast-vs-previous proves pricing-in."""
+    if event_dt is None:
+        return "اطلاعات کافی برای تشخیص وجود ندارد", "زمان دقیق رویداد در پیام موجود نیست؛ بازه پیش از انتشار قابل تعیین نیست."
     now = datetime.now(timezone.utc)
-    usable = [(t, p) for t, p in points if t <= now]
+    event_dt = event_dt.astimezone(timezone.utc) if event_dt.tzinfo else event_dt.replace(tzinfo=timezone.utc)
+    window_end = min(now, event_dt)
+    window_start = window_end - timedelta(hours=12)
+    usable = sorted(
+        [(t, p) for t, p in points if window_start <= t <= window_end and p is not None and p > 0],
+        key=lambda row: row[0],
+    )
     if len(usable) < 10:
-        return "اطلاعات کافی برای تشخیص وجود ندارد", "داده‌های قیمت پیش از گزارش کافی نیست."
-    end_t, end_p = usable[-1]
-    start = next(((t, p) for t, p in reversed(usable[:-1]) if end_t - t >= timedelta(hours=12)), None)
-    if not start:
-        return "اطلاعات کافی برای تشخیص وجود ندارد", "بازه مقایسه ۱۲ ساعته در داده‌های دریافتی موجود نیست."
-    change = (end_p / start[1] - 1) * 100
-    expected = expected_gold_direction(event_name, forecast, previous)
-    if expected is None:
         return "اطلاعات کافی برای تشخیص وجود ندارد", (
-            f"تغییر ۱۲ ساعته طلا {change:+.2f}% بوده؛ اما از پیش‌بینی و عدد قبلی، جهت مورد انتظار این رویداد قابل استنتاج مطمئن نیست."
+            "در ۱۲ ساعت منتهی به زمان فعلی/رویداد، حداقل ۱۰ کندل معتبر پیش از انتشار در دسترس نیست؛ "
+            "هیچ داده‌ای پس از زمان رویداد وارد محاسبه نشده است."
         )
-    aligned = (change < 0 and expected == "down") or (change > 0 and expected == "up")
-    cross_start = end_t - timedelta(hours=12)
-    dxy = _change((cross_market or {}).get("DXY"), cross_start, end_t)
-    us10y = _change((cross_market or {}).get("US10Y"), cross_start, end_t)
-    cross_agrees = dxy is not None and us10y is not None and (
-        (expected == "up" and dxy < 0 and us10y < 0) or
-        (expected == "down" and dxy > 0 and us10y > 0)
-    )
-    cross_note = "؛ ".join(_cross_market_lines(cross_market, cross_start, end_t))
+    start_t, start_p = usable[0]
+    end_t, end_p = usable[-1]
+    if end_t - start_t < timedelta(hours=6):
+        return "اطلاعات کافی برای تشخیص وجود ندارد", "پوشش زمانی کندل‌های پیش از رویداد کمتر از ۶ ساعت است."
+    change = (end_p / start_p - 1) * 100
+    dxy = _change((cross_market or {}).get("DXY"), start_t, end_t)
+    us10y = _change((cross_market or {}).get("US10Y"), start_t, end_t)
+    cross_note = "؛ ".join(_cross_market_lines(cross_market, start_t, end_t))
     if abs(change) < 0.20:
-        return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", (
-            f"تغییر ۱۲ ساعته طلا {change:+.2f}% بوده و حرکت هم‌جهت معناداری با اثر مورد انتظار دیده نمی‌شود؛ این به‌تنهایی نبود پیش‌خورشدن را ثابت نمی‌کند."
+        return "حرکت قابل‌توجهی پیش از انتشار ثبت نشد؛ پیش‌خورشدن نامشخص", (
+            f"تغییر GC=F در بازه پیش از انتشار {change:+.2f}% بود. نبود حرکت قابل‌توجه، "
+            "ثابت نمی‌کند رویداد پیش‌خور نشده است. " + cross_note
         )
-    if aligned:
-        return "تا حدی پیش‌خور شده؛ شواهد محدود", (
-            f"تغییر ۱۲ ساعته طلا {change:+.2f}% و هم‌جهت با اثر معمولِ مورد انتظار از ارقام پیش‌بینی/قبلی است. وضعیت بازارهای تأییدی: {cross_note}. " + ("دلار و بازده نیز هم‌جهت‌اند؛ شواهد چندبازاری قوی‌تر است، اما اثبات قطعی نیست." if cross_agrees else "تأیید هم‌زمان دلار و بازده کامل نیست؛ اطمینان محدود باقی می‌ماند.")
-        )
-    return "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود", (
-        f"تغییر ۱۲ ساعته طلا {change:+.2f}% با جهت معمولِ مورد انتظار از ارقام پیش‌بینی/قبلی هم‌راستا نیست. خبر ممکن است از مسیر دیگری قیمت‌گذاری شده باشد؛ داده تکمیلی لازم است. وضعیت بازارهای تأییدی: {cross_note}."
+    return "حرکت پیش از انتشار مشاهده شد؛ انتساب به رویداد اثبات نشده", (
+        f"تغییر GC=F در ۱۲ ساعت منتهی به زمان فعلی/رویداد {change:+.2f}% بود. "
+        "این فقط حرکت مشاهده‌شده قیمت است؛ مقایسه پیش‌بینی با عدد قبلی، غافلگیری نسبت به اجماع بازار را نشان نمی‌دهد "
+        "و به‌تنهایی نمی‌توان گفت همین رویداد پیش‌خور شده است. "
+        f"داده‌های بین‌بازاری در همان بازه: {cross_note}. برای تشخیص قوی‌تر، انتظارات بازار/نرخ‌های ضمنی "
+        "و چند ناشر مستقل لازم است."
     )
-
 def classify_post(points, event_dt, actual, forecast, cross_market=None):
     if not event_dt:
         return "زمان دقیق رویداد در پیام قابل استخراج نیست؛ واکنش پس از انتشار به‌طور معتبر جدا نمی‌شود."
