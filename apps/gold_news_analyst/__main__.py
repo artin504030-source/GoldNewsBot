@@ -65,8 +65,9 @@ def main():
     archive = load_json(cfg.archive_path, []); state = load_json(cfg.state_path, {"sent": []})
     if not isinstance(archive, list) or not isinstance(state, dict): raise RuntimeError("Invalid archive/state structure")
     sent = set(state.get("sent", []))
-    # For workflow_run events, analyse only items archived by the News Bot run
-    # that just completed. archive_news() is called only after Telegram delivery.
+    # For workflow_run events, analyse only items archived by the News Bot or
+    # Breaking Monitor run that just completed. archive_news() is called only
+    # after Telegram delivery, so the analyst replies to the corresponding post.
     triggered_after = parse_time(os.getenv("GOLD_NEWS_ANALYST_TRIGGERED_AFTER", ""))
     candidates = [
         x for x in archive
