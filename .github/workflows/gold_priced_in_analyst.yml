@@ -2,6 +2,15 @@ name: Gold Priced-In Analyst
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Analyze new reports or discard old pending Telegram updates"
+        required: true
+        default: "analyze"
+        type: choice
+        options:
+          - analyze
+          - discard_pending
   workflow_run:
     workflows: ["Gold Reports Bot"]
     types: [completed]
@@ -38,6 +47,7 @@ jobs:
         env:
           GOLD_PRICED_IN_ANALYST_BOT_TOKEN: ${{ secrets.GOLD_PRICED_IN_ANALYST_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
+          PRICED_IN_MODE: ${{ github.event.inputs.mode || 'analyze' }}
         run: |
           if [ -z "$GOLD_PRICED_IN_ANALYST_BOT_TOKEN" ]; then
             echo "Waiting for GOLD_PRICED_IN_ANALYST_BOT_TOKEN secret; bot is not activated yet."

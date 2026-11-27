@@ -173,9 +173,10 @@ def make_chart(symbol, event_dt, kind):
     else:
         anchor = event_dt or now
         selected = [(t, p) for t, p in points if anchor - timedelta(hours=8) <= t <= anchor + timedelta(hours=8)]
-        if len(selected) < 5:
-            selected = [(t, p) for t, p in points if t >= now - timedelta(hours=24)]
         title = "Gold futures — post-release reaction"
+    if len(selected) < 5:
+        selected = points[-100:]
+        title += " — full available data window"
     if len(selected) < 5:
         raise ValueError("Not enough chart bars for a readable image.")
     fig, ax = plt.subplots(figsize=(10, 5), dpi=140)

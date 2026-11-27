@@ -1,5 +1,8 @@
 import unittest
-from apps.gold_priced_in_analyst.__main__ import is_target_post, extract_fields, is_target_chat
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+from apps.gold_priced_in_analyst.__main__ import is_target_post, extract_fields, is_target_chat, discard_pending_updates
 from apps.gold_priced_in_analyst.analysis import numeric, parse_event_time, classify_pre, classify_post
 from datetime import datetime, timezone, timedelta
 
@@ -30,6 +33,21 @@ class TargetFilterTests(unittest.TestCase):
             self.assertTrue(is_target_chat({"id": -100123, "username": "gold_channel"}))
         finally:
             module.CHAT_ID = old
+
+    def test_discard_pending_updates_advances_offset_without_processing(self):
+        import apps.gold_priced_in_analyst.__main__ as module
+        old_path = module.STATE_PATH
+        with tempfile.TemporaryDirectory() as tmp:
+            try:
+                module.STATE_PATH = Path(tmp) / "state.json"
+                state = {"offset": 100, "processed": []}
+                with patch.object(module, "telegram", return_value=[{"update_id": 101}, {"update_id": 102}]) as api:
+                    self.assertEqual(discard_pending_updates(state), 2)
+                    api.assert_called_once()
+                self.assertEqual(state["offset"], 103)
+                self.assertTrue(module.STATE_PATH.exists())
+            finally:
+                module.STATE_PATH = old_path
 
     def test_extract_fields(self):
         fields = extract_fields("🌍 USD | US CPI\n🕘 زمان کابل: 2026-11-26 20:00\nپیش‌بینی عددی Forex Factory: 3.1%\nعدد واقعی: 3.2%")
