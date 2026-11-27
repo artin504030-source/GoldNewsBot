@@ -2,7 +2,7 @@ import unittest
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
-from apps.gold_priced_in_analyst.__main__ import is_target_post, extract_fields, is_target_chat, discard_pending_updates
+from apps.gold_priced_in_analyst.__main__ import is_target_post, extract_fields, is_target_chat, discard_pending_updates, process_update, verify_channel_admin
 from apps.gold_priced_in_analyst.analysis import numeric, parse_event_time, classify_pre, classify_post
 from datetime import datetime, timezone, timedelta
 
@@ -48,6 +48,50 @@ class TargetFilterTests(unittest.TestCase):
                 self.assertTrue(module.STATE_PATH.exists())
             finally:
                 module.STATE_PATH = old_path
+
+    def test_verify_channel_admin_requires_pin_permission(self):
+        import apps.gold_priced_in_analyst.__main__ as module
+        with patch.object(module, "telegram", side_effect=[
+            {"id": 123},
+            {"status": "administrator", "can_pin_messages": False},
+        ]):
+            with self.assertRaisesRegex(RuntimeError, "can_pin_messages"):
+                verify_channel_admin()
+
+    def test_process_update_pins_analysis_and_chart(self):
+        import apps.gold_priced_in_analyst.__main__ as module
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import Mock
+        old_chat = module.CHAT_ID
+        try:
+            module.CHAT_ID = "-100123"
+            with tempfile.TemporaryDirectory() as tmp:
+                chart = Path(tmp) / "chart.png"
+                chart.write_bytes(b"chart")
+                photo_response = Mock()
+                photo_response.status_code = 200
+                photo_response.json.return_value = {
+                    "ok": True, "result": {"message_id": 22}
+                }
+                with patch.object(module, "analyze_report", return_value=("analysis", "GC=F", None)), \
+                     patch.object(module, "make_chart", return_value=(str(chart), "chart caption")), \
+                     patch.object(module, "telegram", side_effect=[
+                         {"message_id": 21}, True, True
+                     ]) as api, \
+                     patch.object(module.requests, "post", return_value=photo_response):
+                    update = {"channel_post": {
+                        "chat": {"id": -100123},
+                        "message_id": 99,
+                        "text": "پیش‌تحلیل رویداد اقتصادی",
+                    }}
+                    self.assertTrue(process_update(update))
+                    self.assertEqual(api.call_args_list[1].args[0], "pinChatMessage")
+                    self.assertEqual(api.call_args_list[1].args[1]["message_id"], 21)
+                    self.assertEqual(api.call_args_list[2].args[0], "pinChatMessage")
+                    self.assertEqual(api.call_args_list[2].args[1]["message_id"], 22)
+        finally:
+            module.CHAT_ID = old_chat
 
     def test_extract_fields(self):
         fields = extract_fields("🌍 USD | US CPI\n🕘 زمان کابل: 2026-11-26 20:00\nپیش‌بینی عددی Forex Factory: 3.1%\nعدد واقعی: 3.2%")
