@@ -2,6 +2,7 @@ import sys
 import types
 import unittest
 from datetime import datetime
+from unittest.mock import patch
 
 # The session helpers do not need BeautifulSoup; keep the root test environment
 # lightweight even when the standalone Gold Reports dependency set is not installed.
@@ -12,7 +13,7 @@ except ImportError:
     stub.BeautifulSoup = lambda *args, **kwargs: None
     sys.modules["bs4"] = stub
 
-from gold_reports import KABUL, session_status_text
+from gold_reports import KABUL, session_status_text, monitor_session_boundaries, SESSION_BOUNDARY_GRACE
 
 
 class GoldReportsSessionTests(unittest.TestCase):
@@ -30,6 +31,17 @@ class GoldReportsSessionTests(unittest.TestCase):
         new_york = next(line for line in message.splitlines() if "سشن نیویورک" in line)
         self.assertIn("17:30", new_york)
         self.assertIn("02:30", new_york)
+
+    def test_session_open_notice_recovers_if_runner_is_delayed(self):
+        # Tokyo opens at 04:30 Kabul in November; this check runs 90 minutes later.
+        now = datetime(2026, 11, 27, 6, 0, tzinfo=KABUL)
+        state = {}
+        with patch("gold_reports.send_telegram") as send:
+            monitor_session_boundaries(state, now, {}, [])
+        self.assertEqual(send.call_count, 1)
+        self.assertIn("سشن <b>توکیو</b> باز شد", send.call_args.args[0])
+        self.assertIn("JP:2026-11-27:open", state["session_notices"])
+        self.assertEqual(SESSION_BOUNDARY_GRACE.total_seconds(), 7200)
 
 
 if __name__ == "__main__":
