@@ -1,7 +1,7 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from apps.gold_news_press_conferences.__main__ import (
-    is_conference_candidate, get_event_image, telegram_post
+    is_conference_candidate, get_event_image, telegram_post, fetch_conference_feed
 )
 
 class PressConferenceTests(unittest.TestCase):
@@ -32,6 +32,25 @@ class PressConferenceTests(unittest.TestCase):
 
     def test_rejects_non_https_or_empty_image(self):
         self.assertEqual(get_event_image({}, '<meta property="og:image" content="http://bad.example/a.jpg">', "https://example.com"), "")
+
+    def test_retries_google_news_rate_limit_then_succeeds(self):
+        class Response:
+            def __init__(self, status_code, content=b"rss"):
+                self.status_code = status_code
+                self.content = content
+                self.headers = {"Retry-After": "1"} if status_code == 429 else {}
+            def raise_for_status(self):
+                if self.status_code >= 400:
+                    import requests
+                    raise requests.HTTPError(f"HTTP {self.status_code}")
+
+        session = Mock()
+        session.get.side_effect = [Response(429), Response(200, b"feed-ok")]
+        with patch("apps.gold_news_press_conferences.__main__.time.sleep") as sleep:
+            content = fetch_conference_feed(session)
+        self.assertEqual(content, b"feed-ok")
+        self.assertEqual(session.get.call_count, 2)
+        sleep.assert_called_once_with(1.0)
 
     @patch("apps.gold_news_press_conferences.__main__.requests.post")
     def test_publishes_transcript_as_text_when_image_is_missing(self, post):
