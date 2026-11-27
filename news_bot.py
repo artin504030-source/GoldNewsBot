@@ -48,7 +48,6 @@ TRANSLATION_DELAY = 1.0
 FEEDS = {
     "Federal Reserve": "https://www.federalreserve.gov/feeds/press_all.xml",
     "BLS": "https://www.bls.gov/feed/bls_latest.rss",
-    "BEA": "https://apps.bea.gov/rss/rss.xml",
     "Google News — US Official Economic Releases": "https://news.google.com/rss/search?q=(site%3Abls.gov+OR+site%3Abea.gov+OR+site%3Afederalreserve.gov)+CPI+OR+PCE+OR+GDP+OR+employment+OR+retail+sales+OR+interest+rates&hl=en-US&gl=US&ceid=US:en",
     "Google News — US Economic Expectations": "https://news.google.com/rss/search?q=US+economic+data+forecast+expectations+analysts+CPI+PCE+NFP+GDP+retail+sales+Federal+Reserve&hl=en-US&gl=US&ceid=US:en",
     "Google News — Europe Official Economic Releases": "https://news.google.com/rss/search?q=(site%3Aecb.europa.eu+OR+site%3Aec.europa.eu%2Feurostat+OR+site%3Aons.gov.uk+OR+site%3Abankofengland.co.uk)+HICP+OR+CPI+OR+GDP+OR+PMI+OR+employment+OR+interest+rates&hl=en&gl=GB&ceid=GB:en",
@@ -89,7 +88,7 @@ SOURCE_DISPLAY_NAMES = {
 
 BREAKING_FEEDS = {
     name: url for name, url in FEEDS.items()
-    if name in {"Federal Reserve", "BLS", "BEA", "European Central Bank", "Eurostat", "Bank of England", "Bank of Japan", "Google News — Europe Official Economic Releases", "Google News — Asia Official Economic Releases", "Geopolitical News", "Conflict and Security", "Oil Trade and Supply", "Energy Shipping Routes", "Trade and Sanctions", "Economic Reports"}
+    if name in {"Federal Reserve", "BLS", "European Central Bank", "Eurostat", "Bank of England", "Bank of Japan", "Google News — Europe Official Economic Releases", "Google News — Asia Official Economic Releases", "Geopolitical News", "Conflict and Security", "Oil Trade and Supply", "Energy Shipping Routes", "Trade and Sanctions", "Economic Reports"}
 }
 
 EXCLUDE_TERMS = [
