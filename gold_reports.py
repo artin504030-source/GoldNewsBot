@@ -41,7 +41,7 @@ def fetch_public_holidays(state, now):
     results = {}
     for session in SESSIONS:
         zone = ZoneInfo(session["zone"])
-        local_year = now.date().year
+        local_year = now.astimezone(zone).date().year
         key = f"{session['country']}-{local_year}"
         cached = cache.get(key)
         refresh_due = True
@@ -73,56 +73,72 @@ def fetch_public_holidays(state, now):
 
 def get_session_times(session, now, session_date=None):
     zone = ZoneInfo(session["zone"])
-    local_today = session_date or now.date()
+    local_today = session_date or now.astimezone(zone).date()
     open_h, open_m = map(int, session["open"].split(":"))
     close_h, close_m = map(int, session["close"].split(":"))
     open_local = datetime.combine(local_today, datetime.min.time().replace(hour=open_h, minute=open_m), zone)
     close_local = datetime.combine(local_today, datetime.min.time().replace(hour=close_h, minute=close_m), zone)
     return open_local.astimezone(KABUL), close_local.astimezone(KABUL)
 
+
 def session_status_text(now, holiday_data, ff_events):
-    lines = ["🌐 <b>وضعیت و برنامه سشن‌های معاملاتی امروز</b>"]
+    lines = ["🌐 <b>برنامه و وضعیت روزانه سشن‌های معاملاتی</b>"]
     ff_holidays = {}
     for event in ff_events:
         if event.get("all_day") and any(word in event["title"].lower() for word in ("holiday", "bank holiday")):
             country = {"AUD": "AU", "JPY": "JP", "GBP": "GB", "USD": "US"}.get(event["currency"].upper())
             if country:
                 ff_holidays.setdefault(country, []).append({"date": event["date"], "title": event["title"]})
+
     for session in SESSIONS:
         zone = ZoneInfo(session["zone"])
-        local_date = now.date()
+        local_date = now.astimezone(zone).date()
         open_kabul, close_kabul = get_session_times(session, now, local_date)
-        holiday = next((h for h in holiday_data.get(session["country"], [])
-                        if h.get("date") == local_date.isoformat()), None)
-        ff_holiday_reason = "; ".join(sorted({h["title"] for h in ff_holidays.get(session["country"], []) if h["date"] == local_date.isoformat()}))
-        if local_date.weekday() >= 5:
-            lines.append(f"🔴 <b>سشن {session['name']}: تعطیل آخر هفته</b> — بازار فارکس در تعطیلی هفتگی است.")
-            lines.append(f"زمان عادی بازگشایی: {open_kabul:%H:%M} | زمان عادی بسته‌شدن: {close_kabul:%H:%M} کابل")
-            continue
-        if ff_holiday_reason:
-            lines.append(f"🔴 <b>سشن {session['name']}: تعطیل بانکی</b> — {html.escape(ff_holiday_reason)} ({COUNTRY_NAMES[session['country']]}).")
-            lines.append(f"زمان عادی بازگشایی: {open_kabul:%H:%M} | زمان عادی بسته‌شدن: {close_kabul:%H:%M} کابل")
-            continue
+        public_holiday = next((h for h in holiday_data.get(session["country"], [])
+                               if h.get("date") == local_date.isoformat()), None)
+        ff_reason = "; ".join(sorted({
+            h["title"] for h in ff_holidays.get(session["country"], [])
+            if h["date"] == local_date.isoformat()
+        }))
         opened = open_kabul <= now < close_kabul
-        state_label = "اکنون باز است" if opened else ("امروز هنوز باز نشده" if now < open_kabul else "امروز بسته شده")
-        if holiday:
-            lines.append(f"🟠 <b>سشن {session['name']}: {state_label}</b> — امروز تعطیلی رسمی {COUNTRY_NAMES[session['country']]} است: {html.escape(holiday.get('name', 'تعطیلی رسمی'))}. بسته بودن کامل بازار از این داده به‌تنهایی تأیید نمی‌شود.")
+
+        if local_date.weekday() >= 5:
+            status, marker = "تعطیل آخر هفته", "🔴"
+        elif ff_reason:
+            status, marker = f"تعطیل بانکی — {html.escape(ff_reason)}", "🔴"
+        elif opened:
+            status, marker = "اکنون باز است", "🟢"
+        elif now < open_kabul:
+            status, marker = "هنوز باز نشده", "🟡"
         else:
-            lines.append(f"🟢 <b>سشن {session['name']}: {state_label}</b>")
-        open_label = open_kabul.strftime("%H:%M" if open_kabul.date() == now.date() else "%m-%d %H:%M")
-        close_label = close_kabul.strftime("%H:%M" if close_kabul.date() == now.date() else "%m-%d %H:%M")
+            status, marker = "امروز بسته شده", "⚪"
+
+        if public_holiday and not ff_reason and local_date.weekday() < 5:
+            status += f" | تعطیلی رسمی {COUNTRY_NAMES[session['country']]}: {html.escape(public_holiday.get('name', 'تعطیلی رسمی'))}"
+            if not opened:
+                marker = "🟠"
+
+        open_label = open_kabul.strftime("%Y-%m-%d %H:%M" if open_kabul.date() != now.date() else "%H:%M")
+        close_label = close_kabul.strftime("%Y-%m-%d %H:%M" if close_kabul.date() != now.date() else "%H:%M")
+        state_line = f"{marker} <b>سشن {session['name']}: {status}</b>"
+        if opened:
+            state_line += f" — تا ساعت <code>{close_label}</code> کابل باز است"
+        lines.append(state_line)
         lines.append(f"بازگشایی: <code>{open_label}</code> کابل | بسته‌شدن: <code>{close_label}</code> کابل")
-    lines.append("ساعت‌ها بر اساس ساعات متداول بازار فارکس و منطقه زمانی محلی هر مرکز محاسبه شده‌اند؛ تعطیلی‌های رسمی در صورت موجودبودن داده منبع اعمال می‌شوند.")
+
+    lines.append("ساعت‌ها به وقت کابل هستند و با تغییر ساعت تابستانی لندن، نیویورک و سیدنی به‌صورت خودکار تنظیم می‌شوند.")
     return "\n".join(lines)
+
 
 def monitor_session_boundaries(state, now, holiday_data, ff_events):
     sent = state.setdefault("session_notices", {})
     utc_now = now.astimezone(ZoneInfo("UTC"))
-    # A New York session's 17:00 close occurs after midnight in Kabul.
-    # Check both today's and yesterday's local session dates to catch that close.
-    candidate_dates = (now.date(), now.date() - timedelta(days=1))
     for session in SESSIONS:
+        zone = ZoneInfo(session["zone"])
+        local_date = now.astimezone(zone).date()
+        candidate_dates = (local_date, local_date - timedelta(days=1))
         currency = {"AU": "AUD", "JP": "JPY", "GB": "GBP", "US": "USD"}.get(session["country"])
+
         for session_date in candidate_dates:
             if session_date.weekday() >= 5:
                 continue
@@ -134,19 +150,24 @@ def monitor_session_boundaries(state, now, holiday_data, ff_events):
             )
             if bank_holiday:
                 continue
+
             opening, closing = get_session_times(session, now, session_date)
             for kind, boundary, verb in (("open", opening, "باز شد"), ("close", closing, "بسته شد")):
                 delta = (utc_now - boundary.astimezone(ZoneInfo("UTC"))).total_seconds()
                 key = f"{session['country']}:{session_date.isoformat()}:{kind}"
-                if 0 <= delta <= 20 * 60 and not sent.get(key):
+                if 0 <= delta <= 45 * 60 and not sent.get(key):
                     time_label = boundary.strftime("%Y-%m-%d %H:%M" if boundary.date() != now.date() else "%H:%M")
-                    message = (f"🔔 <b>اعلان سشن معاملاتی</b>\n"
-                               f"🕒 ساعت کابل: <code>{time_label}</code>\n"
-                               f"سشن <b>{session['name']}</b> {verb}.\n\n"
-                               f"<b>Gold Admin</b>\n<b>Reports Admin</b>")
+                    snapshot = session_status_text(now, holiday_data, ff_events).splitlines()[1:]
+                    message = (
+                        f"🔔 <b>اعلان سشن معاملاتی</b>\n"
+                        f"🕒 ساعت کابل: <code>{time_label}</code>\n"
+                        f"سشن <b>{session['name']}</b> {verb}.\n\n"
+                        f"<b>وضعیت هم‌زمان همه سشن‌ها</b>\n"
+                        + "\n".join(snapshot)
+                        + "\n\n<b>Gold Admin</b>\n<b>Reports Admin</b>"
+                    )
                     send_telegram(message)
                     sent[key] = now.isoformat()
-
 
 def now_kabul():
     return datetime.now(KABUL)
@@ -155,7 +176,7 @@ def load_state():
     try:
         return json.loads(STATE_FILE.read_text(encoding="utf-8"))
     except Exception:
-        return {"pre_sent": {}, "post_sent": {}, "daily_sent": {}}
+        return {"pre_sent": {}, "post_sent": {}, "daily_sent": {}, "session_daily_sent": {}}
 
 def save_state(state):
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -499,7 +520,7 @@ def send_long_telegram(message, limit=3500):
         send_telegram(chunk)
 
 def report_message(events, heading, period, now, holiday_data, all_events):
-    lines = [f"📚 <b>{heading}</b>", f"دوره: <code>{period}</code>", "", session_status_text(now, holiday_data, all_events), ""]
+    lines = [f"📚 <b>{heading}</b>", f"دوره: <code>{period}</code>", ""]
     if not events:
         lines.append("رویداد مهمی در منبع تقویم پیدا نشد.")
     for e in events:
@@ -511,6 +532,15 @@ def report_message(events, heading, period, now, holiday_data, all_events):
     lines += ["", "برای رویدادهای مهم، سناریو و دیدگاه منابع در پیام‌های جداگانه منتشر می‌شود.",
               "", "<b>Gold Admin</b>", "<b>Reports Admin</b>"]
     return "\n".join(lines)
+
+def publish_session_schedule(state, now, holiday_data, all_events):
+    sent = state.setdefault("session_daily_sent", {})
+    key = now.date().isoformat()
+    if sent.get(key):
+        return
+    send_long_telegram(session_status_text(now, holiday_data, all_events))
+    sent[key] = now.isoformat()
+
 
 def publish_scheduled_report(events, state, now, holiday_data):
     day = now.weekday()
@@ -560,7 +590,10 @@ def main():
     holiday_data = fetch_public_holidays(state, now)
     mode = os.environ.get("REPORTS_MODE", "monitor")
     if mode == "daily":
+        publish_session_schedule(state, now, holiday_data, events)
         publish_scheduled_report(events, state, now, holiday_data)
+    elif mode == "sessions":
+        publish_session_schedule(state, now, holiday_data, events)
     elif mode == "test_news":
         send_telegram(test_news_message(events))
     elif mode == "test_pre_news":
