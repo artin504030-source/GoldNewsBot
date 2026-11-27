@@ -22,6 +22,16 @@ class GoldReportsAccuracyTests(unittest.TestCase):
         _, label = analyst_bias({"title": "CPI", "currency": "USD"}, articles)
         self.assertEqual(label, "بالاتر/قوی‌تر")
 
+    def test_google_news_rss_items_use_publisher_labels_not_shared_host(self):
+        articles = [
+            {"title": "CPI hotter than expected", "description": "", "source": "Reuters",
+             "link": "https://news.google.com/rss/articles/one"},
+            {"title": "Inflation remains high", "description": "", "source": "Bloomberg",
+             "link": "https://news.google.com/rss/articles/two"},
+        ]
+        _, label = analyst_bias({"title": "CPI", "currency": "USD"}, articles)
+        self.assertEqual(label, "بالاتر/قوی‌تر")
+
     def test_unemployment_lower_than_forecast_is_described_as_better(self):
         result = compare_actual_forecast("3.8%", "4.0%", "Unemployment Rate")
         self.assertIn("پایین‌تر", result)
