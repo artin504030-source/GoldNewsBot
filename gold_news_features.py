@@ -166,7 +166,7 @@ def record_source_confirmation(source, title, link, published=None):
         sources.append(source)
     match["confirmed_sources"] = sources
     match["source_count"] = len(sources)
-    match["confirmation_status"] = "تأیید چند منبع" if len(sources) >= 2 else "یک منبع ثبت‌شده"
+    match["confirmation_status"] = "چند فید ثبت‌شده؛ تأیید مستقل احراز نشده" if len(sources) >= 2 else "یک فید ثبت‌شده؛ نه تأیید مستقل"
     match["last_confirmation_utc"] = datetime.now(timezone.utc).isoformat()
     save_archive(items)
     return len(sources)
