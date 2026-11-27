@@ -120,6 +120,20 @@ class TargetFilterTests(unittest.TestCase):
         status, _ = classify_pre([], None, "3.1%", "3.0%", "CPI")
         self.assertEqual(status, "اطلاعات کافی برای تشخیص وجود ندارد")
 
+    def test_pre_analysis_ignores_all_bars_after_current_time_and_event(self):
+        now = datetime.now(timezone.utc).replace(second=0, microsecond=0)
+        event_dt = now + timedelta(hours=1)
+        prior = [(now - timedelta(hours=12) + timedelta(minutes=60*i), 2000.0) for i in range(13)]
+        future = [(event_dt + timedelta(minutes=5*i), 2200.0) for i in range(1, 5)]
+        status, evidence = classify_pre(prior + future, event_dt, "3.2%", "3.0%", "US CPI")
+        self.assertEqual(status, "شواهد کافی برای تأیید پیش‌خورشدن دیده نمی‌شود")
+        self.assertIn("+0.00%", evidence)
+
+    def test_pre_analysis_requires_event_timestamp(self):
+        status, evidence = classify_pre([], None, "3.2%", "3.0%", "US CPI")
+        self.assertEqual(status, "اطلاعات کافی برای تشخیص وجود ندارد")
+        self.assertIn("زمان دقیق رویداد", evidence)
+
 
     def test_cross_market_change_uses_common_time_window(self):
         from datetime import datetime, timezone, timedelta
