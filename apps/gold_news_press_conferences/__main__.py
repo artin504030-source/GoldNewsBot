@@ -168,17 +168,8 @@ def save_json(path, value):
 
 
 def telegram_post(token, chat_id, image_url, caption, text):
-    photo = requests.post(
-        f"https://api.telegram.org/bot{token}/sendPhoto",
-        data={"chat_id": chat_id, "photo": image_url, "caption": caption[:1000]},
-        timeout=35,
-    )
-    photo.raise_for_status()
-    payload = photo.json()
-    if not payload.get("ok"):
-        raise RuntimeError("Telegram rejected the event image: " + str(payload)[:250])
-    message_id = (payload.get("result") or {}).get("message_id")
-    # Text is sent in bounded chunks as replies to the image, preserving the event context.
+    # Split long transcripts into Telegram-safe chunks. With an image, attach the
+    # first text chunk as a reply; without an image, send it as a normal message.
     chunks, remaining = [], str(text or "").strip()
     while remaining:
         if len(remaining) <= 3800:
@@ -191,11 +182,40 @@ def telegram_post(token, chat_id, image_url, caption, text):
             cut = 3800
         chunks.append(remaining[:cut].strip())
         remaining = remaining[cut:].strip()
+
+    if image_url:
+        photo = requests.post(
+            f"https://api.telegram.org/bot{token}/sendPhoto",
+            data={"chat_id": chat_id, "photo": image_url, "caption": caption[:1000]},
+            timeout=35,
+        )
+        photo.raise_for_status()
+        payload = photo.json()
+        if not payload.get("ok"):
+            raise RuntimeError("Telegram rejected the event image: " + str(payload)[:250])
+        message_id = (payload.get("result") or {}).get("message_id")
+        reply_to = message_id
+    else:
+        if not chunks:
+            raise ValueError("Transcript text is empty")
+        first = requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            data={"chat_id": chat_id, "text": chunks.pop(0),
+                  "disable_web_page_preview": True},
+            timeout=30,
+        )
+        first.raise_for_status()
+        payload = first.json()
+        if not payload.get("ok"):
+            raise RuntimeError("Telegram rejected the transcript text")
+        message_id = (payload.get("result") or {}).get("message_id")
+        reply_to = message_id
+
     for chunk in chunks:
         response = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             data={"chat_id": chat_id, "text": chunk,
-                  "reply_to_message_id": message_id, "allow_sending_without_reply": True,
+                  "reply_to_message_id": reply_to, "allow_sending_without_reply": True,
                   "disable_web_page_preview": True},
             timeout=30,
         )
@@ -203,7 +223,6 @@ def telegram_post(token, chat_id, image_url, caption, text):
         if not response.json().get("ok"):
             raise RuntimeError("Telegram rejected a transcript text part")
     return message_id
-
 
 def process_entry(entry, token, chat_id, seen, archive, session):
     title = clean(entry.get("title"))
@@ -234,8 +253,7 @@ def process_entry(entry, token, chat_id, seen, archive, session):
         return False
     image_url = get_event_image(entry, page_html, final_url)
     if not image_url:
-        print("Skipped: no image tied to this specific conference:", title)
-        return False
+        print("No conference-specific image found; publishing transcript as text:", title)
 
     persian_title = translate_to_persian(title, session)
     persian_transcript = translate_to_persian(transcript, session)
@@ -255,7 +273,7 @@ def process_entry(entry, token, chat_id, seen, archive, session):
         "🏛 نشست خبری اقتصادی | Gold News\\n"
         f"{persian_title}\\n"
         f"📅 {published_kabul}\\n"
-        "متن ترجمه‌شده در پیام‌های پاسخ به این تصویر آمده است."
+        "متن ترجمه‌شده در پیام‌های بعدی آمده است."
     )
     message_id = telegram_post(token, chat_id, image_url, caption, message)
     archive.append({
@@ -281,7 +299,7 @@ def process_entry(entry, token, chat_id, seen, archive, session):
         "content_type": "economic_press_conference_transcript",
         "persian_title": persian_title,
         "translated_body": persian_transcript[:30000],
-        "image_url": image_url,
+        "image_url": image_url or None,
     })
     seen.add(uid)
     print(f"Published verified conference transcript: {title}")
