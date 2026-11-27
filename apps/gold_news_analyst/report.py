@@ -49,8 +49,12 @@ def render(item, article=None, market_snapshot=None):
     original_url = article.get("final_url") or item.get("link", "")
     safe_link = escape(original_url, quote=True) if isinstance(original_url, str) and original_url.startswith(("https://", "http://")) else ""
     article_ok = bool(article.get("body") and len(article.get("body", "").strip()) >= 300)
+    is_conference = item.get("content_type") == "economic_press_conference_transcript"
     lines = [
         "🧠 <b>تحلیلگر اخبار بازار | Gold News Analyst</b>",
+        *([ "🏛 <b>تحلیل متن نشست خبری اقتصادی</b>",
+             "این ارزیابی بر اساس متن منتشرشده نشست و اظهارات ثبت‌شده انجام شده است؛ برداشت‌ها و سناریوها قطعی نیستند." ]
+          if is_conference else []),
         f"📰 <b>عنوان اصلی: {title}</b>",
         f"🇮🇷 <b>عنوان فارسی: {persian_title}</b>",
         f"منبع ثبت‌شده در آرشیو: {registered_source}",
