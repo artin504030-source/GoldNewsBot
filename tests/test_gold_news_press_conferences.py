@@ -1,5 +1,8 @@
 import unittest
-from apps.gold_news_press_conferences.__main__ import is_conference_candidate, get_event_image
+from unittest.mock import patch
+from apps.gold_news_press_conferences.__main__ import (
+    is_conference_candidate, get_event_image, telegram_post
+)
 
 class PressConferenceTests(unittest.TestCase):
     def test_detects_central_bank_press_conference(self):
@@ -29,6 +32,21 @@ class PressConferenceTests(unittest.TestCase):
 
     def test_rejects_non_https_or_empty_image(self):
         self.assertEqual(get_event_image({}, '<meta property="og:image" content="http://bad.example/a.jpg">', "https://example.com"), "")
+
+    @patch("apps.gold_news_press_conferences.__main__.requests.post")
+    def test_publishes_transcript_as_text_when_image_is_missing(self, post):
+        class Response:
+            def raise_for_status(self):
+                pass
+            def json(self):
+                return {"ok": True, "result": {"message_id": 123}}
+        post.return_value = Response()
+        message_id = telegram_post("token", "@channel", "", "", "متن کامل صورت‌جلسه")
+        self.assertEqual(message_id, 123)
+        self.assertEqual(post.call_count, 1)
+        self.assertIn("متن کامل صورت‌جلسه", post.call_args.kwargs["data"]["text"])
+        self.assertNotIn("photo", post.call_args.kwargs["data"])
+
 
 if __name__ == "__main__":
     unittest.main()
