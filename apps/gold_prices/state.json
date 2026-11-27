@@ -12384,6 +12384,36 @@
       "symbol": "XAUUSD",
       "timestamp": "2026-11-27T21:30:13.128000+00:00",
       "price": 3650.0
+    },
+    {
+      "symbol": "EURUSD",
+      "timestamp": "2026-11-27T21:58:59+00:00",
+      "price": 1.093445
+    },
+    {
+      "symbol": "GBPUSD",
+      "timestamp": "2026-11-27T21:58:53+00:00",
+      "price": 1.309825
+    },
+    {
+      "symbol": "USDJPY",
+      "timestamp": "2026-11-27T21:58:55+00:00",
+      "price": 159.5805
+    },
+    {
+      "symbol": "AUDUSD",
+      "timestamp": "2026-11-27T21:57:57+00:00",
+      "price": 0.664845
+    },
+    {
+      "symbol": "USDCAD",
+      "timestamp": "2026-11-27T21:58:59+00:00",
+      "price": 1.4248
+    },
+    {
+      "symbol": "XAUUSD",
+      "timestamp": "2026-11-27T22:00:06.564000+00:00",
+      "price": 3650.0
     }
   ],
   "daily_open": {
@@ -12590,47 +12620,83 @@
     }
   },
   "last_daily_close": {
-    "price": 3566.199951,
+    "price": 3650.0,
     "prices": {
       "XAUUSD": {
-        "price": 3566.199951,
-        "timestamp": "2026-11-26T22:00:10.894000+00:00",
+        "price": 3650.0,
+        "timestamp": "2026-11-27T22:00:06.564000+00:00",
         "source": "XAUS"
       },
       "EURUSD": {
-        "price": 1.096925,
-        "timestamp": "2026-11-26T21:59:58+00:00",
+        "price": 1.093445,
+        "timestamp": "2026-11-27T21:58:59+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "GBPUSD": {
-        "price": 1.31061,
-        "timestamp": "2026-11-26T21:59:58+00:00",
+        "price": 1.309825,
+        "timestamp": "2026-11-27T21:58:53+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "USDJPY": {
-        "price": 159.2665,
-        "timestamp": "2026-11-26T21:59:49+00:00",
+        "price": 159.5805,
+        "timestamp": "2026-11-27T21:58:55+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "AUDUSD": {
-        "price": 0.66345,
-        "timestamp": "2026-11-26T21:59:58+00:00",
+        "price": 0.664845,
+        "timestamp": "2026-11-27T21:57:57+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       },
       "USDCAD": {
-        "price": 1.424865,
-        "timestamp": "2026-11-26T21:59:44+00:00",
+        "price": 1.4248,
+        "timestamp": "2026-11-27T21:58:59+00:00",
         "source": "BiQuote / MetaTrader 5 (Broker 1)"
       }
     },
-    "timestamp": "2026-11-26T22:00:32.749259+00:00",
-    "date": "2026-11-26"
+    "timestamp": "2026-11-27T22:00:35.857950+00:00",
+    "date": "2026-11-27"
   },
-  "last_weekly_close": null,
+  "last_weekly_close": {
+    "price": 3650.0,
+    "prices": {
+      "XAUUSD": {
+        "price": 3650.0,
+        "timestamp": "2026-11-27T22:00:06.564000+00:00",
+        "source": "XAUS"
+      },
+      "EURUSD": {
+        "price": 1.093445,
+        "timestamp": "2026-11-27T21:58:59+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "GBPUSD": {
+        "price": 1.309825,
+        "timestamp": "2026-11-27T21:58:53+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "USDJPY": {
+        "price": 159.5805,
+        "timestamp": "2026-11-27T21:58:55+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "AUDUSD": {
+        "price": 0.664845,
+        "timestamp": "2026-11-27T21:57:57+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      },
+      "USDCAD": {
+        "price": 1.4248,
+        "timestamp": "2026-11-27T21:58:59+00:00",
+        "source": "BiQuote / MetaTrader 5 (Broker 1)"
+      }
+    },
+    "timestamp": "2026-11-27T22:00:35.857950+00:00",
+    "date": "2026-11-27"
+  },
   "sent": {
     "daily_open": "2026-11-27",
     "weekly_open": "",
-    "daily_close": "2026-11-26"
+    "daily_close": "2026-11-27"
   },
-  "last_price_slot": "2026-11-27T21:30:00+00:00"
+  "last_price_slot": "2026-11-27T22:00:00+00:00"
 }
