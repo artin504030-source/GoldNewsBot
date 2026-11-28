@@ -654,7 +654,7 @@ def get_week_calendar_events(today, days_ahead=0):
     return sorted(unique.values(), key=lambda event: event["datetime_utc"])
 
 
-def publish_scheduled_report(events, state, now, holiday_data):
+def publish_scheduled_report(events, state, now, holiday_data, force=False):
     day = now.weekday()
     today = now.date()
     if day == 5:  # Saturday: current calendar month
@@ -668,7 +668,7 @@ def publish_scheduled_report(events, state, now, holiday_data):
     else:
         chosen = [e for e in events if e["date"] == today.isoformat()]
         key, heading, period = f"day-{today:%Y-%m-%d}", "اخبار و رویدادهای اقتصادی امروز", str(today)
-    if state.setdefault("daily_sent", {}).get(key):
+    if state.setdefault("daily_sent", {}).get(key) and not force:
         return
     # Keep all high/medium-impact events and split long reports under Telegram's message limit.
     chosen = [e for e in chosen if e["impact"] in ("high", "medium")]
@@ -710,6 +710,9 @@ def main():
     if mode == "daily":
         publish_session_schedule(state, now, holiday_data, events)
         publish_scheduled_report(events, state, now, holiday_data)
+    elif mode == "resend":
+        # Explicit manual resend bypasses only the report deduplication guard.
+        publish_scheduled_report(events, state, now, holiday_data, force=True)
     elif mode == "sessions":
         publish_session_schedule(state, now, holiday_data, events)
     elif mode == "test_news":
