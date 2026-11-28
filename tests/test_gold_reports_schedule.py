@@ -33,21 +33,38 @@ class GoldReportsScheduleTests(unittest.TestCase):
         self.assertEqual(fetch.call_count, 2)
         self.assertEqual({item["title"] for item in events}, {"November Saturday", "December Friday"})
 
-    def test_sunday_report_includes_saturday_to_friday_only(self):
+    def test_sunday_report_includes_upcoming_saturday_to_friday_only(self):
         now = datetime(2026, 11, 29, 9, 0, tzinfo=gold_reports.KABUL)
         events = [
-            event("2026-11-28", "Saturday event"),
-            event("2026-12-04", "Friday event"),
-            event("2026-12-05", "Next Saturday event"),
+            event("2026-11-28", "Current week Saturday"),
+            event("2026-12-04", "Current week Friday"),
+            event("2026-12-05", "Upcoming Saturday event"),
+            event("2026-12-11", "Upcoming Friday event"),
+            event("2026-12-12", "Following Saturday event"),
         ]
         state = {}
         with patch("gold_reports.send_long_telegram") as send:
             gold_reports.publish_scheduled_report(events, state, now, {})
         message = send.call_args.args[0]
-        self.assertIn("Saturday event", message)
-        self.assertIn("Friday event", message)
-        self.assertNotIn("Next Saturday event", message)
-        self.assertIn("2026-11-28 تا 2026-12-04", message)
+        self.assertNotIn("Current week Saturday", message)
+        self.assertNotIn("Current week Friday", message)
+        self.assertIn("Upcoming Saturday event", message)
+        self.assertIn("Upcoming Friday event", message)
+        self.assertNotIn("Following Saturday event", message)
+        self.assertIn("2026-12-05 تا 2026-12-11", message)
+
+    def test_report_events_are_visually_separated_and_labeled(self):
+        now = datetime(2026, 11, 28, 10, 0, tzinfo=gold_reports.KABUL)
+        message = gold_reports.report_message(
+            [event("2026-11-27", "Core CPI", actual="2.8%"),
+             event("2026-11-30", "Employment report")],
+            "تقویم و گزارش ماه جاری", "November 2026", now, {}, []
+        )
+        self.assertIn("━━━━━━━━━━━━━━━━━━━━", message)
+        self.assertIn("📅 <b>تاریخ و ساعت:</b>", message)
+        self.assertIn("🌍 <b>ارز:</b>", message)
+        self.assertIn("📰 <b>رویداد:</b>", message)
+        self.assertIn("📢 <b>نتیجه واقعی:</b>", message)
 
     def test_month_report_marks_released_event_and_actual_result(self):
         now = datetime(2026, 11, 28, 10, 0, tzinfo=gold_reports.KABUL)
