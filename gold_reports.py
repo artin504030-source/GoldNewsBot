@@ -565,9 +565,10 @@ def report_message(events, heading, period, now, holiday_data, all_events):
     for e in events:
         dt = datetime.fromisoformat(e["datetime_kabul"]).strftime("%Y-%m-%d %H:%M")
         event_utc = datetime.fromisoformat(e["datetime_utc"])
-        if e.get("actual"):
+        actual_value = (e.get("actual") or "").strip()
+        if actual_value and actual_value not in ("-", "—", "N/A"):
             status = "منتشر شده"
-            result = f"\n   نتیجه واقعی: <b>{html.escape(e['actual'])}</b>"
+            result = f"\n   نتیجه واقعی: <b>{html.escape(actual_value)}</b>"
         elif event_utc <= now.astimezone(ZoneInfo("UTC")):
             status = "زمان انتشار گذشته؛ نتیجه هنوز در منبع ثبت نشده"
             result = ""
@@ -598,6 +599,21 @@ def current_week_range(today):
     # Afghanistan's reporting week runs Saturday through Friday.
     week_start = today - timedelta(days=(today.weekday() - 5) % 7)
     return week_start, week_start + timedelta(days=6)
+
+
+def get_week_calendar_events(today):
+    week_start, week_end = current_week_range(today)
+    # A seven-day reporting week can touch two calendar months.
+    month_refs = []
+    for ref_date in (week_start, week_end):
+        month_key = (ref_date.year, ref_date.month)
+        if month_key not in [(d.year, d.month) for d in month_refs]:
+            month_refs.append(ref_date)
+    unique = {}
+    for ref_date in month_refs:
+        for event in get_calendar(ref_date):
+            unique[(event["datetime_utc"], event["currency"], event["title"])] = event
+    return sorted(unique.values(), key=lambda event: event["datetime_utc"])
 
 
 def publish_scheduled_report(events, state, now, holiday_data):
@@ -648,15 +664,9 @@ def main():
         raise RuntimeError("Configure GOLD_REPORTS_BOT_TOKEN and GOLD_REPORTS_CHANNEL_ID GitHub secrets.")
     now = now_kabul()
     mode = os.environ.get("REPORTS_MODE", "monitor")
-    events = get_calendar(now.date())
-    if mode == "daily" and now.weekday() == 6:
-        week_start, week_end = current_week_range(now.date())
-        # A Saturday-Friday week can cross a calendar-month boundary.
-        if week_start.month != now.date().month or week_start.year != now.date().year:
-            previous_month_events = get_calendar(week_start)
-            merged = {(e["datetime_utc"], e["currency"], e["title"]): e for e in previous_month_events}
-            merged.update({(e["datetime_utc"], e["currency"], e["title"]): e for e in events})
-            events = sorted(merged.values(), key=lambda e: e["datetime_utc"])
+    events = (get_week_calendar_events(now.date())
+              if mode == "daily" and now.weekday() == 6
+              else get_calendar(now.date()))
     state = load_state()
     holiday_data = fetch_public_holidays(state, now)
     if mode == "daily":
