@@ -53,6 +53,22 @@ class GoldReportsScheduleTests(unittest.TestCase):
         self.assertNotIn("Following Saturday event", message)
         self.assertIn("2026-12-05 تا 2026-12-11", message)
 
+    def test_long_report_splitting_keeps_event_cards_together(self):
+        separator = "━━━━━━━━━━━━━━━━━━━━"
+        message = (
+            "header\\n"
+            "CARD_ONE\\nDETAIL_ONE\\n"
+            + separator
+            + "\\nCARD_TWO\\nDETAIL_TWO\\n"
+            + separator
+            + "\\nfooter"
+        )
+        with patch("gold_reports.send_telegram") as send:
+            gold_reports.send_long_telegram(message, limit=35)
+        chunks = [call.args[0] for call in send.call_args_list]
+        self.assertTrue(any("CARD_ONE" in chunk and "DETAIL_ONE" in chunk for chunk in chunks))
+        self.assertTrue(any("CARD_TWO" in chunk and "DETAIL_TWO" in chunk for chunk in chunks))
+
     def test_report_events_are_visually_separated_and_labeled(self):
         now = datetime(2026, 11, 28, 10, 0, tzinfo=gold_reports.KABUL)
         message = gold_reports.report_message(
