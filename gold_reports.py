@@ -551,10 +551,10 @@ def send_long_telegram(message, limit=3500):
         sections = message.split(separator)
         chunks, current = [], sections[0]
         for section in sections[1:]:
-            candidate = current.rstrip() + "\\n" + separator + "\\n" + section.lstrip()
+            candidate = current.rstrip() + "\n" + separator + "\n" + section.lstrip()
             if len(candidate) > limit and current.strip():
                 chunks.append(current.strip())
-                current = separator + "\\n" + section.lstrip()
+                current = separator + "\n" + section.lstrip()
             else:
                 current = candidate
         if current.strip():
@@ -563,7 +563,7 @@ def send_long_telegram(message, limit=3500):
         lines = message.splitlines()
         chunks, current = [], ""
         for line in lines:
-            candidate = (current + "\\n" + line).strip() if current else line
+            candidate = (current + "\n" + line).strip() if current else line
             if len(candidate) > limit and current:
                 chunks.append(current)
                 current = line
