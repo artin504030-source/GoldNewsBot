@@ -49,7 +49,7 @@ jobs:
           python - <<'PY'
           from datetime import datetime, timezone
           from market_hours import market_is_closed
-          print(f"closed={str(market_is_closed(datetime.now(timezone.utc))).lower()}")
+          from pathlib import Path\n          value = str(market_is_closed(datetime.now(timezone.utc))).lower()\n          Path("$GITHUB_OUTPUT").write_text(f"closed={value}\\n", encoding="utf-8")
           PY
 
       - name: Send weekend closure notice
