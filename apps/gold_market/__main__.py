@@ -35,7 +35,7 @@ def main():
         now = datetime.now(timezone.utc)
         if market_is_closed(now):
             message = weekend_closure_message(now, "Gold Market")
-            message += "\\n\\n" + "\\n".join(f"<b>{line}</b>" for line in SIGNATURE_LINES)
+            message += "\n\n" + "\n".join(f"<b>{line}</b>" for line in SIGNATURE_LINES)
             ids = send_telegram_messages(
                 settings.telegram_bot_token, settings.telegram_chat_id, (message,)
             )
@@ -61,7 +61,7 @@ def main():
         )
         print(f"Telegram delivery successful: {len(message_ids)} message(s)")
 
-    print("\\n--- MACHINE READABLE ASSESSMENT ---")
+    print("\n--- MACHINE READABLE ASSESSMENT ---")
     keys = (
         "as_of", "regime", "trend", "volatility", "support", "resistance",
         "atr_percent", "drivers", "main_scenario", "alternative_scenario",
