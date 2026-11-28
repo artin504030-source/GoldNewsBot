@@ -559,32 +559,53 @@ def send_long_telegram(message, limit=3500):
         send_telegram(chunk)
 
 def report_message(events, heading, period, now, holiday_data, all_events):
-    lines = [f"📚 <b>{heading}</b>", f"دوره: <code>{period}</code>", ""]
+    published = sum(
+        1 for event in events
+        if (event.get("actual") or "").strip() not in ("", "-", "—", "N/A")
+    )
+    pending = len(events) - published
+    lines = [
+        f"📚 <b>{heading}</b>",
+        f"📆 دوره گزارش: <code>{period}</code>",
+        f"📌 تعداد رویدادها: <b>{len(events)}</b> | منتشرشده: <b>{published}</b> | باقی‌مانده: <b>{pending}</b>",
+        "",
+    ]
     if not events:
         lines.append("رویداد مهمی در منبع تقویم پیدا نشد.")
-    for e in events:
+    for index, e in enumerate(events, start=1):
         dt = datetime.fromisoformat(e["datetime_kabul"]).strftime("%Y-%m-%d %H:%M")
         event_utc = datetime.fromisoformat(e["datetime_utc"])
         actual_value = (e.get("actual") or "").strip()
         if actual_value and actual_value not in ("-", "—", "N/A"):
             status = "منتشر شده"
-            result = f"\n   نتیجه واقعی: <b>{html.escape(actual_value)}</b>"
+            result = f"\\n📢 <b>نتیجه واقعی:</b> <b>{html.escape(actual_value)}</b>"
         elif event_utc <= now.astimezone(ZoneInfo("UTC")):
             status = "زمان انتشار گذشته؛ نتیجه هنوز در منبع ثبت نشده"
             result = ""
         else:
             status = "در انتظار انتشار"
             result = ""
-        lines.append(
-            f"• <b>{html.escape(dt)} کابل | {html.escape(e['currency'])}</b> — "
-            f"<b>{html.escape(e['title'])}</b> [{html.escape(e['impact'])}]"
-            f"\n   وضعیت: <b>{status}</b>"
-            f"\n   پیش‌بینی: {html.escape(e['forecast'] or '—')} "
-            f"| قبلی: {html.escape(e['previous'] or '—')}{result}"
-        )
-    lines += ["", "برای رویدادهای مهم، سناریو و دیدگاه منابع در پیام‌های جداگانه منتشر می‌شود.",
-              "", "<b>Gold Admin</b>", "<b>Reports Admin</b>"]
-    return "\n".join(lines)
+        if index > 1:
+            lines.extend(["", "━━━━━━━━━━━━━━━━━━━━", ""])
+        lines.extend([
+            f"📅 <b>تاریخ و ساعت:</b> <code>{html.escape(dt)}</code> کابل",
+            f"🌍 <b>ارز:</b> {html.escape(e['currency'])}",
+            f"📰 <b>رویداد:</b> {html.escape(e['title'])}",
+            f"⚠️ <b>اهمیت:</b> {html.escape(e['impact'])}",
+            f"🔮 <b>پیش‌بینی:</b> {html.escape(e.get('forecast') or '—')}",
+            f"📚 <b>عدد قبلی:</b> {html.escape(e.get('previous') or '—')}",
+            f"📍 <b>وضعیت:</b> {status}{result}",
+        ])
+    lines += [
+        "",
+        "━━━━━━━━━━━━━━━━━━━━",
+        "",
+        "برای رویدادهای مهم، سناریو و دیدگاه منابع در پیام‌های جداگانه منتشر می‌شود.",
+        "",
+        "<b>Gold Admin</b>",
+        "<b>Reports Admin</b>",
+    ]
+    return "\\n".join(lines)
 
 def publish_session_schedule(state, now, holiday_data, all_events):
     sent = state.setdefault("session_daily_sent", {})
@@ -601,8 +622,9 @@ def current_week_range(today):
     return week_start, week_start + timedelta(days=6)
 
 
-def get_week_calendar_events(today):
-    week_start, week_end = current_week_range(today)
+def get_week_calendar_events(today, days_ahead=0):
+    # days_ahead=7 selects the next Saturday-Friday reporting week.
+    week_start, week_end = current_week_range(today + timedelta(days=days_ahead))
     # A seven-day reporting week can touch two calendar months.
     month_refs = []
     for ref_date in (week_start, week_end):
@@ -623,10 +645,10 @@ def publish_scheduled_report(events, state, now, holiday_data):
         chosen = [e for e in events if date.fromisoformat(e["date"]).year == today.year
                   and date.fromisoformat(e["date"]).month == today.month]
         key, heading, period = f"month-{today:%Y-%m}", "تقویم و گزارش ماه جاری", today.strftime("%B %Y")
-    elif day == 6:  # Sunday: current Afghanistan week, Saturday through Friday
-        start, end = current_week_range(today)
+    elif day == 6:  # Sunday: upcoming Afghanistan week, Saturday through Friday
+        start, end = current_week_range(today + timedelta(days=7))
         chosen = [e for e in events if start <= date.fromisoformat(e["date"]) <= end]
-        key, heading, period = f"week-{start:%Y-%m-%d}", "اخبار و رویدادهای هفته جاری", f"{start} تا {end}"
+        key, heading, period = f"week-{start:%Y-%m-%d}", "اخبار و رویدادهای هفته پیشِ رو", f"{start} تا {end}"
     else:
         chosen = [e for e in events if e["date"] == today.isoformat()]
         key, heading, period = f"day-{today:%Y-%m-%d}", "اخبار و رویدادهای اقتصادی امروز", str(today)
@@ -664,7 +686,7 @@ def main():
         raise RuntimeError("Configure GOLD_REPORTS_BOT_TOKEN and GOLD_REPORTS_CHANNEL_ID GitHub secrets.")
     now = now_kabul()
     mode = os.environ.get("REPORTS_MODE", "monitor")
-    events = (get_week_calendar_events(now.date())
+    events = (get_week_calendar_events(now.date(), days_ahead=7)
               if mode == "daily" and now.weekday() == 6
               else get_calendar(now.date()))
     state = load_state()
