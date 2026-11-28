@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - daily
+          - resend
           - monitor
           - test_news
           - test_pre_news
