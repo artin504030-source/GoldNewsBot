@@ -43,7 +43,7 @@ jobs:
           now = datetime.now(timezone.utc)
           ny = now.astimezone(ZoneInfo("America/New_York"))
           slot = f"closed-{ny:%Y%m%d}" if market_is_closed(now) else f"open-{now:%Y%m%d%H}"
-          Path(os.environ["GITHUB_OUTPUT"]).write_text(f"value={slot}\\n", encoding="utf-8")
+          Path(os.environ["GITHUB_OUTPUT"]).write_text(f"value={slot}\n", encoding="utf-8")
           PY
 
       - name: Restore delivery duplicate guard
@@ -69,7 +69,7 @@ jobs:
         if: success() && steps.delivery-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p .gold-market-delivery-state
-          printf '%s\\n' '${{ steps.slot.outputs.value }}' > .gold-market-delivery-state/sent
+          printf '%s\n' '${{ steps.slot.outputs.value }}' > .gold-market-delivery-state/sent
 
       - name: Persist successful delivery marker
         if: success() && steps.delivery-cache.outputs.cache-hit != 'true'
