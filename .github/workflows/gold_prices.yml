@@ -2,7 +2,6 @@ name: Gold Prices Bot
 
 on:
   schedule:
-    # Every 30 minutes, offset from the busy top-of-hour window.
     - cron: "13,43 * * * *"
   workflow_dispatch:
     inputs:
@@ -43,7 +42,27 @@ jobs:
           TELEGRAM_TEST_FOOTER: Gold Admin|Prices Admin
         run: python scripts/telegram_delivery_test.py
 
+      - name: Detect weekend market closure
+        id: market-hours
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import os
+          from market_hours import market_is_closed
+          value = str(market_is_closed(datetime.now(timezone.utc))).lower()
+          Path(os.environ["GITHUB_OUTPUT"]).write_text(f"closed={value}\n", encoding="utf-8")
+          PY
+
+      - name: Send weekend closure notice
+        if: steps.market-hours.outputs.closed == 'true'
+        env:
+          GOLD_PRICES_BOT_TOKEN: ${{ secrets.GOLD_PRICES_BOT_TOKEN }}
+          GOLD_PRICES_CHANNEL_ID: ${{ secrets.GOLD_PRICES_CHANNEL_ID }}
+        run: python -m apps.gold_prices.weekend
+
       - name: Run Gold Prices bot
+        if: steps.market-hours.outputs.closed != 'true'
         env:
           GOLD_PRICES_BOT_TOKEN: ${{ secrets.GOLD_PRICES_BOT_TOKEN }}
           GOLD_PRICES_CHANNEL_ID: ${{ secrets.GOLD_PRICES_CHANNEL_ID }}
@@ -61,4 +80,3 @@ jobs:
             git commit -m "chore(gold-prices): persist session state"
             git push origin HEAD:main
           fi
-
