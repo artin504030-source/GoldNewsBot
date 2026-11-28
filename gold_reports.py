@@ -544,17 +544,33 @@ def send_telegram(text):
     return message_id
 
 def send_long_telegram(message, limit=3500):
-    lines = message.splitlines()
-    chunks, current = [], ""
-    for line in lines:
-        candidate = (current + "\n" + line).strip() if current else line
-        if len(candidate) > limit and current:
+    separator = "━━━━━━━━━━━━━━━━━━━━"
+    if separator in message:
+        # Reports use the separator between event cards. Keep each card intact
+        # when Telegram's message-size limit requires multiple messages.
+        sections = message.split(separator)
+        chunks, current = [], sections[0]
+        for section in sections[1:]:
+            candidate = current.rstrip() + "\\n" + separator + "\\n" + section.lstrip()
+            if len(candidate) > limit and current.strip():
+                chunks.append(current.strip())
+                current = separator + "\\n" + section.lstrip()
+            else:
+                current = candidate
+        if current.strip():
+            chunks.append(current.strip())
+    else:
+        lines = message.splitlines()
+        chunks, current = [], ""
+        for line in lines:
+            candidate = (current + "\\n" + line).strip() if current else line
+            if len(candidate) > limit and current:
+                chunks.append(current)
+                current = line
+            else:
+                current = candidate
+        if current:
             chunks.append(current)
-            current = line
-        else:
-            current = candidate
-    if current:
-        chunks.append(current)
     for chunk in chunks:
         send_telegram(chunk)
 
