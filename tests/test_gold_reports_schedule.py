@@ -25,6 +25,14 @@ class GoldReportsScheduleTests(unittest.TestCase):
         self.assertEqual(str(start), "2026-11-28")
         self.assertEqual(str(end), "2026-12-04")
 
+    def test_week_calendar_fetches_both_months_when_week_crosses_month(self):
+        november = event("2026-11-28", "November Saturday")
+        december = event("2026-12-04", "December Friday")
+        with patch("gold_reports.get_calendar", side_effect=[[november], [december]]) as fetch:
+            events = gold_reports.get_week_calendar_events(datetime(2026, 11, 29).date())
+        self.assertEqual(fetch.call_count, 2)
+        self.assertEqual({item["title"] for item in events}, {"November Saturday", "December Friday"})
+
     def test_sunday_report_includes_saturday_to_friday_only(self):
         now = datetime(2026, 11, 29, 9, 0, tzinfo=gold_reports.KABUL)
         events = [
