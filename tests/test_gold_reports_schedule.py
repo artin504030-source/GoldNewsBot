@@ -89,7 +89,7 @@ class GoldReportsScheduleTests(unittest.TestCase):
             "تقویم و گزارش ماه جاری", "November 2026", now, {}, []
         )
         self.assertIn("منتشر شده", message)
-        self.assertIn("نتیجه واقعی: <b>2.8%</b>", message)
+        self.assertIn("📢 <b>نتیجه واقعی:</b> <b>2.8%</b>", message)
 
     def test_month_report_marks_future_event_as_pending(self):
         now = datetime(2026, 11, 28, 10, 0, tzinfo=gold_reports.KABUL)
