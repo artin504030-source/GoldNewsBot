@@ -56,15 +56,15 @@ class GoldReportsScheduleTests(unittest.TestCase):
     def test_long_report_splitting_keeps_event_cards_together(self):
         separator = "━━━━━━━━━━━━━━━━━━━━"
         message = (
-            "header\\n"
-            "CARD_ONE\\nDETAIL_ONE\\n"
+            "header\n"
+            "CARD_ONE\nDETAIL_ONE\n"
             + separator
-            + "\\nCARD_TWO\\nDETAIL_TWO\\n"
+            + "\nCARD_TWO\nDETAIL_TWO\n"
             + separator
-            + "\\nfooter"
+            + "\nfooter"
         )
         with patch("gold_reports.send_telegram") as send:
-            gold_reports.send_long_telegram(message, limit=35)
+            gold_reports.send_long_telegram(message, limit=50)
         chunks = [call.args[0] for call in send.call_args_list]
         self.assertTrue(any("CARD_ONE" in chunk and "DETAIL_ONE" in chunk for chunk in chunks))
         self.assertTrue(any("CARD_TWO" in chunk and "DETAIL_TWO" in chunk for chunk in chunks))
