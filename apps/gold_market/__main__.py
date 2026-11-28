@@ -1,6 +1,7 @@
 import argparse
 import json
 from decimal import Decimal
+from market_hours import market_is_closed, weekend_closure_message
 from .config import Settings
 from .providers import FredProvider, XausSpotProvider, YahooChartProvider
 from .history import XausDailyHistoryProvider
@@ -25,6 +26,22 @@ def main():
     args = parser.parse_args()
 
     settings = Settings.from_env()
+    if args.send_telegram:
+        settings.validate_telegram()
+        from .delivery import send_telegram_messages
+        from .telegram import SIGNATURE_LINES
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        if market_is_closed(now):
+            message = weekend_closure_message(now, "Gold Market")
+            message += "\\n\\n" + "\\n".join(f"<b>{line}</b>" for line in SIGNATURE_LINES)
+            ids = send_telegram_messages(
+                settings.telegram_bot_token, settings.telegram_chat_id, (message,)
+            )
+            print(f"Weekend closure notice delivered: {len(ids)} message(s)")
+            return 0
+
     collector = MarketDataCollector(
         FredProvider(settings.fred_api_key), YahooChartProvider(),
         XausSpotProvider(), XausDailyHistoryProvider()
@@ -34,7 +51,6 @@ def main():
     print(report)
 
     if args.send_telegram:
-        settings.validate_telegram()
         if assessment.trend == "UNAVAILABLE":
             raise SystemExit("Telegram delivery stopped: Gold Market assessment is unavailable")
         from .delivery import send_telegram_messages
@@ -45,7 +61,7 @@ def main():
         )
         print(f"Telegram delivery successful: {len(message_ids)} message(s)")
 
-    print("\n--- MACHINE READABLE ASSESSMENT ---")
+    print("\\n--- MACHINE READABLE ASSESSMENT ---")
     keys = (
         "as_of", "regime", "trend", "volatility", "support", "resistance",
         "atr_percent", "drivers", "main_scenario", "alternative_scenario",
