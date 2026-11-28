@@ -578,7 +578,7 @@ def report_message(events, heading, period, now, holiday_data, all_events):
         actual_value = (e.get("actual") or "").strip()
         if actual_value and actual_value not in ("-", "—", "N/A"):
             status = "منتشر شده"
-            result = f"\\n📢 <b>نتیجه واقعی:</b> <b>{html.escape(actual_value)}</b>"
+            result = f"\n📢 <b>نتیجه واقعی:</b> <b>{html.escape(actual_value)}</b>"
         elif event_utc <= now.astimezone(ZoneInfo("UTC")):
             status = "زمان انتشار گذشته؛ نتیجه هنوز در منبع ثبت نشده"
             result = ""
@@ -605,7 +605,7 @@ def report_message(events, heading, period, now, holiday_data, all_events):
         "<b>Gold Admin</b>",
         "<b>Reports Admin</b>",
     ]
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 def publish_session_schedule(state, now, holiday_data, all_events):
     sent = state.setdefault("session_daily_sent", {})
