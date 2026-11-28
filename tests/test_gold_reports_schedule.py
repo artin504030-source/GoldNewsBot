@@ -82,6 +82,15 @@ class GoldReportsScheduleTests(unittest.TestCase):
         self.assertIn("📰 <b>رویداد:</b>", message)
         self.assertIn("📢 <b>نتیجه واقعی:</b>", message)
 
+    def test_force_resend_bypasses_daily_report_deduplication(self):
+        now = datetime(2026, 11, 28, 9, 0, tzinfo=gold_reports.KABUL)
+        events = [event("2026-11-30", "CPI release")]
+        state = {"daily_sent": {"month-2026-11": "already sent"}}
+        with patch("gold_reports.send_long_telegram") as send:
+            gold_reports.publish_scheduled_report(events, state, now, {}, force=True)
+        send.assert_called_once()
+        self.assertEqual(state["daily_sent"]["month-2026-11"], now.isoformat())
+
     def test_month_report_marks_released_event_and_actual_result(self):
         now = datetime(2026, 11, 28, 10, 0, tzinfo=gold_reports.KABUL)
         message = gold_reports.report_message(
