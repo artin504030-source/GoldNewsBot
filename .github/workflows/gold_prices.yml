@@ -51,7 +51,7 @@ jobs:
           import os
           from market_hours import market_is_closed
           value = str(market_is_closed(datetime.now(timezone.utc))).lower()
-          Path(os.environ["GITHUB_OUTPUT"]).write_text(f"closed={value}\\n", encoding="utf-8")
+          Path(os.environ["GITHUB_OUTPUT"]).write_text(f"closed={value}\n", encoding="utf-8")
           PY
 
       - name: Send weekend closure notice
