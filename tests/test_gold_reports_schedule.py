@@ -59,13 +59,13 @@ class GoldReportsScheduleTests(unittest.TestCase):
         self.assertIn("در انتظار انتشار", message)
 
     def test_silent_pin_is_persistent_and_never_unpinned(self):
-        with patch.object(gold_reports, "TOKEN", "token"), \\
-             patch.object(gold_reports, "CHAT_ID", "channel"), \\
-             patch("gold_reports.telegram_post", side_effect=[
-                 {"result": {"message_id": 123}},
-                 {"result": {"message_id": 123}},
-             ]) as post:
-            gold_reports.send_telegram("test")
+        with patch.object(gold_reports, "TOKEN", "token"):
+            with patch.object(gold_reports, "CHAT_ID", "channel"):
+                with patch("gold_reports.telegram_post", side_effect=[
+                    {"result": {"message_id": 123}},
+                    {"result": {"message_id": 123}},
+                ]) as post:
+                    gold_reports.send_telegram("test")
         self.assertEqual(post.call_count, 2)
         self.assertTrue(post.call_args_list[1].args[0].endswith("/pinChatMessage"))
         self.assertTrue(post.call_args_list[1].args[1]["disable_notification"])
