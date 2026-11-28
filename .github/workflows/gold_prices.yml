@@ -2,7 +2,6 @@ name: Gold Prices Bot
 
 on:
   schedule:
-    # Every 30 minutes, offset from the busy top-of-hour window.
     - cron: "13,43 * * * *"
   workflow_dispatch:
     inputs:
@@ -48,8 +47,11 @@ jobs:
         run: |
           python - <<'PY'
           from datetime import datetime, timezone
+          from pathlib import Path
+          import os
           from market_hours import market_is_closed
-          from pathlib import Path\n          value = str(market_is_closed(datetime.now(timezone.utc))).lower()\n          Path("$GITHUB_OUTPUT").write_text(f"closed={value}\\n", encoding="utf-8")
+          value = str(market_is_closed(datetime.now(timezone.utc))).lower()
+          Path(os.environ["GITHUB_OUTPUT"]).write_text(f"closed={value}\\n", encoding="utf-8")
           PY
 
       - name: Send weekend closure notice
