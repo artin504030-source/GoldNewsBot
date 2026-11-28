@@ -532,7 +532,7 @@ def send_telegram(text):
     })
     message_id = data["result"]["message_id"]
 
-    # Pin silently, then immediately unpin: the message remains in the channel without a pin.
+    # Keep every Gold Reports message pinned silently; never unpin it automatically.
     pin_url = f"https://api.telegram.org/bot{TOKEN}/pinChatMessage"
     try:
         telegram_post(pin_url, {
@@ -541,13 +541,6 @@ def send_telegram(text):
         }, timeout=20)
     except Exception as exc:
         print(f"WARNING: message sent but silent pin failed: {exc}", file=sys.stderr)
-        return message_id
-
-    unpin_url = f"https://api.telegram.org/bot{TOKEN}/unpinChatMessage"
-    try:
-        telegram_post(unpin_url, {"chat_id": CHAT_ID, "message_id": message_id}, timeout=20)
-    except Exception as exc:
-        print(f"WARNING: message was silently pinned but could not be unpinned: {exc}", file=sys.stderr)
     return message_id
 
 def send_long_telegram(message, limit=3500):
@@ -570,11 +563,25 @@ def report_message(events, heading, period, now, holiday_data, all_events):
     if not events:
         lines.append("رویداد مهمی در منبع تقویم پیدا نشد.")
     for e in events:
-        dt = datetime.fromisoformat(e["datetime_kabul"]).strftime("%m-%d %H:%M")
-        actual = f" | واقعی: {e['actual']}" if e["actual"] else ""
-        lines.append(f"• <b>{html.escape(dt)} | {html.escape(e['currency'])}</b> — {html.escape(e['title'])} "
-                     f"[{html.escape(e['impact'])}] | پیش‌بینی: {html.escape(e['forecast'] or '—')} "
-                     f"| قبلی: {html.escape(e['previous'] or '—')}{html.escape(actual)}")
+        dt = datetime.fromisoformat(e["datetime_kabul"]).strftime("%Y-%m-%d %H:%M")
+        event_utc = datetime.fromisoformat(e["datetime_utc"])
+        actual_value = (e.get("actual") or "").strip()
+        if actual_value and actual_value not in ("-", "—", "N/A"):
+            status = "منتشر شده"
+            result = f"\n   نتیجه واقعی: <b>{html.escape(actual_value)}</b>"
+        elif event_utc <= now.astimezone(ZoneInfo("UTC")):
+            status = "زمان انتشار گذشته؛ نتیجه هنوز در منبع ثبت نشده"
+            result = ""
+        else:
+            status = "در انتظار انتشار"
+            result = ""
+        lines.append(
+            f"• <b>{html.escape(dt)} کابل | {html.escape(e['currency'])}</b> — "
+            f"<b>{html.escape(e['title'])}</b> [{html.escape(e['impact'])}]"
+            f"\n   وضعیت: <b>{status}</b>"
+            f"\n   پیش‌بینی: {html.escape(e['forecast'] or '—')} "
+            f"| قبلی: {html.escape(e['previous'] or '—')}{result}"
+        )
     lines += ["", "برای رویدادهای مهم، سناریو و دیدگاه منابع در پیام‌های جداگانه منتشر می‌شود.",
               "", "<b>Gold Admin</b>", "<b>Reports Admin</b>"]
     return "\n".join(lines)
@@ -588,20 +595,42 @@ def publish_session_schedule(state, now, holiday_data, all_events):
     sent[key] = now.isoformat()
 
 
+def current_week_range(today):
+    # Afghanistan's reporting week runs Saturday through Friday.
+    week_start = today - timedelta(days=(today.weekday() - 5) % 7)
+    return week_start, week_start + timedelta(days=6)
+
+
+def get_week_calendar_events(today):
+    week_start, week_end = current_week_range(today)
+    # A seven-day reporting week can touch two calendar months.
+    month_refs = []
+    for ref_date in (week_start, week_end):
+        month_key = (ref_date.year, ref_date.month)
+        if month_key not in [(d.year, d.month) for d in month_refs]:
+            month_refs.append(ref_date)
+    unique = {}
+    for ref_date in month_refs:
+        for event in get_calendar(ref_date):
+            unique[(event["datetime_utc"], event["currency"], event["title"])] = event
+    return sorted(unique.values(), key=lambda event: event["datetime_utc"])
+
+
 def publish_scheduled_report(events, state, now, holiday_data):
     day = now.weekday()
     today = now.date()
-    if day == 5:  # Saturday: current month
-        chosen = [e for e in events if date.fromisoformat(e["date"]).month == today.month]
+    if day == 5:  # Saturday: current calendar month
+        chosen = [e for e in events if date.fromisoformat(e["date"]).year == today.year
+                  and date.fromisoformat(e["date"]).month == today.month]
         key, heading, period = f"month-{today:%Y-%m}", "تقویم و گزارش ماه جاری", today.strftime("%B %Y")
-    elif day == 6:  # Sunday: upcoming week
-        end = today + timedelta(days=6)
-        chosen = [e for e in events if today <= date.fromisoformat(e["date"]) <= end]
-        key, heading, period = f"week-{today:%Y-%m-%d}", "چشم‌انداز هفته پیش‌رو", f"{today} تا {end}"
+    elif day == 6:  # Sunday: current Afghanistan week, Saturday through Friday
+        start, end = current_week_range(today)
+        chosen = [e for e in events if start <= date.fromisoformat(e["date"]) <= end]
+        key, heading, period = f"week-{start:%Y-%m-%d}", "اخبار و رویدادهای هفته جاری", f"{start} تا {end}"
     else:
         chosen = [e for e in events if e["date"] == today.isoformat()]
         key, heading, period = f"day-{today:%Y-%m-%d}", "اخبار و رویدادهای اقتصادی امروز", str(today)
-    if state["daily_sent"].get(key):
+    if state.setdefault("daily_sent", {}).get(key):
         return
     # Keep all high/medium-impact events and split long reports under Telegram's message limit.
     chosen = [e for e in chosen if e["impact"] in ("high", "medium")]
@@ -634,10 +663,12 @@ def main():
     if not TOKEN or not CHAT_ID:
         raise RuntimeError("Configure GOLD_REPORTS_BOT_TOKEN and GOLD_REPORTS_CHANNEL_ID GitHub secrets.")
     now = now_kabul()
-    events = get_calendar(now.date())
+    mode = os.environ.get("REPORTS_MODE", "monitor")
+    events = (get_week_calendar_events(now.date())
+              if mode == "daily" and now.weekday() == 6
+              else get_calendar(now.date()))
     state = load_state()
     holiday_data = fetch_public_holidays(state, now)
-    mode = os.environ.get("REPORTS_MODE", "monitor")
     if mode == "daily":
         publish_session_schedule(state, now, holiday_data, events)
         publish_scheduled_report(events, state, now, holiday_data)
