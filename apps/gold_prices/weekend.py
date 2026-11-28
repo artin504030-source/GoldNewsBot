@@ -2,16 +2,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from market_hours import market_is_closed, weekend_closure_message
 from .bot import load_state, save_state, telegram_send
+
+NEW_YORK = ZoneInfo("America/New_York")
 
 
 def process_weekend_notice(now: datetime, state: dict, sender=telegram_send) -> bool:
     if not market_is_closed(now):
         return False
     state.setdefault("sent", {})
-    day_key = now.astimezone(__import__("zoneinfo").ZoneInfo("America/New_York")).date().isoformat()
+    day_key = now.astimezone(NEW_YORK).date().isoformat()
     if state["sent"].get("weekend_closed") == day_key:
         return False
     sender(weekend_closure_message(now, "Gold Prices"))
